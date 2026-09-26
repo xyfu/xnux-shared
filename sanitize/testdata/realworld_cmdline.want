@@ -1,0 +1,9 @@
+/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+---
+docker run -d --name db -e MYSQL_ROOT_PASSWORD=[REDACTED:secret] -e POSTGRES_PASSWORD=[REDACTED:secret] -p 3306:3306 mysql:8
+---
+java -Xmx4g -Dspring.datasource.password=[REDACTED:secret] -Dspring.datasource.url=jdbc:mysql://[REDACTED:cred]@db:3306/app -jar app.jar
+---
+node server.js --token [REDACTED:api_key] --port 3000
+---
+/usr/sbin/sshd -D -o ListenAddress=203.0.114.x

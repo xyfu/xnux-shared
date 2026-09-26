@@ -1,0 +1,29 @@
+contact admin@example.com for help
+---
+From: John.Doe+alerts@mail.example.org
+---
+user=jane_doe@corp.example.co.uk
+---
+<alice@example.net>
+---
+to=bob.smith@sub.domain.io, cc=carol@domain.io
+---
+sender 1user@numbers.example.com
+---
+reply-to: x@y.info
+---
+%admin@percent.example.com
+---
+email: "dev-team@company.cn"
+---
+root@web01.example.com logged in
+---
+user@localhost
+---
+@mention in chat
+---
+git@github.com:org/repo
+---
+not an email address
+---
+name@host

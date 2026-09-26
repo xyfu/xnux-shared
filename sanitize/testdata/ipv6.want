@@ -1,0 +1,29 @@
+Accepted publickey for root from 2606:4700:4700:x:: port 22
+---
+client 2a00:1450:4001:x::
+---
+[2001:4860:4860:x::]:53
+---
+from 2409:8c1e:75b0:x:: port 51122
+---
+ip6=2400:cb00:2048:x::
+---
+peer 2a03:2880:f12f:x:: connected
+---
+src 240e:3a1:2c3d:x::
+---
+IPv6 2604:a880:400:x:: up
+---
+2001:67c:2e8:x::
+---
+next hop 2c0f:fb50:4003:x::
+---
+loopback ::1 link fe80::1%eth0 ula fd00::1 multicast ff02::1
+---
+doc 2001:db8::1
+---
+time 12:34:56 mac aa:bb:cc:dd:ee:ff
+---
+C++ std::string ab::cd
+---
+mapped ::ffff:10.0.0.1

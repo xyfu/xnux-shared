@@ -1,0 +1,29 @@
+postgres://xnux:s3cretPass@db.internal:5432/xnux
+---
+mysql://root:hunter2@127.0.0.1:3306/app
+---
+redis://default:redispass@cache:6379/0
+---
+https://user:pa55word@example.com/path
+---
+amqp://guest:guest@rabbitmq:5672/
+---
+mongodb+srv://admin:Admin%40123@cluster0.mongodb.net/test
+---
+git clone https://oauth2:glpat-abcdef123456@gitlab.com/group/repo.git
+---
+ftp://anonymous:me@ftp.example.org/pub
+---
+DATABASE_URL=postgresql://app:app-pass-01@10.0.0.5/app?sslmode=disable
+---
+proxy http://proxyuser:proxypass@proxy.corp:3128 and smtp://mail:mailpw@smtp.corp:25
+---
+https://example.com/path
+---
+ssh://git@github.com/org/repo.git
+---
+mailto:someone@example.com
+---
+http://localhost:8080/@user
+---
+postgres://db.internal:5432/xnux

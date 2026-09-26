@@ -1,0 +1,29 @@
+postgres://[REDACTED:cred]@db.internal:5432/xnux
+---
+mysql://[REDACTED:cred]@127.0.0.1:3306/app
+---
+redis://[REDACTED:cred]@cache:6379/0
+---
+https://[REDACTED:cred]@example.com/path
+---
+amqp://[REDACTED:cred]@rabbitmq:5672/
+---
+mongodb+srv://[REDACTED:cred]@cluster0.mongodb.net/test
+---
+git clone https://[REDACTED:cred]@gitlab.com/group/repo.git
+---
+ftp://[REDACTED:cred]@ftp.example.org/pub
+---
+DATABASE_URL=postgresql://[REDACTED:cred]@10.0.0.5/app?sslmode=disable
+---
+proxy http://[REDACTED:cred]@proxy.corp:3128 and smtp://[REDACTED:cred]@smtp.corp:25
+---
+https://example.com/path
+---
+ssh://g***@github.com/org/repo.git
+---
+mailto:s***@example.com
+---
+http://localhost:8080/@user
+---
+postgres://db.internal:5432/xnux

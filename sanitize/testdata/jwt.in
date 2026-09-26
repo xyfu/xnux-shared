@@ -1,0 +1,29 @@
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+---
+cookie: session=eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJhdXRoIiwiZXhwIjoxNzAwMDAwMDAwfQ.abcdefgh12345678
+---
+GET /api?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyIjoiYWRtaW4ifQ.xyzXYZ123456789_- HTTP/1.1
+---
+{"id_token":"eyJraWQiOiJhYmMiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ4bnV4In0.MEUCIQD1234567890abcdef"}
+---
+jwt1=eyJhbGciOiJub25lIn0x.eyJhIjoiYmJiYmJiIn0x.sig12345678 jwt2=eyJhbGciOiJub25lIn0y.eyJhIjoiY2NjY2NjIn0y.sig87654321
+---
+x-auth: eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoicm9vdCJ9.AAAAAAAAAAAAAAAAAAAAAAAA
+---
+refresh=eyJ2ZXIiOjF9abcdefgh.eyJ1aWQiOjQyfQabcdefgh.ZZZZZZZZZZZZ
+---
+error: token eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MDAwMDAwMDB9.dGhpc2lzYXNpZ25hdHVyZQ expired
+---
+Location: /cb#access=eyJhbGciOiJQUzI1NiJ9.eyJzY29wZSI6Im9wZW5pZCJ9.qqqqqqqqqqqqqqqq
+---
+eyJ0ZXN0IjoxMjM0NTY3OH0.eyJ0ZXN0IjoxMjM0NTY3OH0.eyJ0ZXN0IjoxMjM0NTY3OH0
+---
+eyJhbGciOiJIUzI1NiJ9 alone is only a header
+---
+eyJshort.eyJshort.sig
+---
+header.payload.signature
+---
+eyJhbGciOiJIUzI1NiJ9.notbase64payload.sig
+---
+version 1.2.3 of eyJ-lib

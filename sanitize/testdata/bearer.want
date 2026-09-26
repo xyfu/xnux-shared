@@ -1,0 +1,29 @@
+Authorization: Bearer [REDACTED:bearer]
+---
+authorization: bearer [REDACTED:bearer]
+---
+curl -H "Authorization: Bearer [REDACTED:bearer]"
+---
+BEARER   [REDACTED:bearer]
+---
+got header Bearer [REDACTED:bearer]
+---
+{"Authorization":"Bearer [REDACTED:bearer]"}
+---
+proxy-authorization: Bearer [REDACTED:bearer]
+---
+Bearer [REDACTED:bearer] and Bearer [REDACTED:bearer]
+---
+Authorization:Bearer	[REDACTED:bearer]
+---
+auth=Bearer%20abc -> Bearer [REDACTED:bearer]
+---
+Bearer short
+---
+bearer: null
+---
+the bearer of bad news
+---
+Bearer
+---
+Authorization: Basic dXNlcjpwYXNz

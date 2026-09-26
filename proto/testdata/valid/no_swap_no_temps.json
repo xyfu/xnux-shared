@@ -1,0 +1,11 @@
+{
+  "v": 1, "seq": 8, "part": 2, "sent_at": 1790000060, "agent_version": "1.0.0", "machine_fp": "9c1e4b7a0d2f6e38",
+  "metrics": [{
+    "ts": 1790000045,
+    "cpu": { "total_pct": 3.1, "iowait_pct": 0, "steal_pct": 1.2 },
+    "load": { "l1": 0.05, "l5": 0.1, "l15": 0.1 },
+    "mem": { "total_mb": 1024, "available_mb": 612, "used_pct": 40.2 },
+    "disks": [{ "mount": "/", "fs": "xfs", "total_gb": 20, "free_gb": 12.5, "used_pct": 37.5 }]
+  }],
+  "redactions": {}
+}

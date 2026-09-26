@@ -1,0 +1,50 @@
+version: "2"
+
+linters:
+  enable:
+    - depguard
+    - errorlint
+    - gosec
+    - misspell
+    - revive
+    - unconvert
+  settings:
+    depguard:
+      rules:
+        # Shared by the agent and the SaaS: no network, no server-side deps.
+        shared-deps:
+          files:
+            - "!**/*_test.go"
+          deny:
+            - pkg: net/http
+              desc: shared packages must not talk to the network
+            - pkg: github.com/xyfu/xnux-agent
+              desc: shared must not depend on the agent
+            - pkg: github.com/xyfu/xnux-saas
+              desc: shared must not depend on the SaaS
+    gosec:
+      excludes:
+        - G104 # unchecked errors: errcheck covers the ones that matter
+        - G304 # file paths come from fixed test layouts, by design
+        - G115 # integer conversions of kernel counters and sizes
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/xyfu/xnux-shared

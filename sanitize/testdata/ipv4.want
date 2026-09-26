@@ -1,0 +1,29 @@
+Failed password [REDACTED:secret] root from 8.8.8.x port 22 ssh2
+---
+client 1.2.3.x connected
+---
+upstream: "http://93.184.216.x:80/"
+---
+peer 104.28.1.x and 172.67.1.x
+---
+[45.33.32.x]:443
+---
+src=185.220.101.x dst=10.0.0.5
+---
+X-Forwarded-For: 203.0.114.x
+---
+255.255.255.254 broadcast-ish
+---
+connect(11.22.33.x)
+---
+ip=1.1.1.x,ip=9.9.9.x
+---
+private 10.1.2.3 192.168.1.10 172.16.5.4 127.0.0.1 100.64.0.1 169.254.169.254
+---
+docs 192.0.2.1 198.51.100.7 203.0.113.9
+---
+multicast 224.0.0.251 reserved 240.0.0.1
+---
+not ip 999.1.1.1 or 01.02.03.04
+---
+version 1.2.3

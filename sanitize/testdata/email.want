@@ -1,0 +1,29 @@
+contact a***@example.com for help
+---
+From: J***@mail.example.org
+---
+user=j***@corp.example.co.uk
+---
+<a***@example.net>
+---
+to=b***@sub.domain.io, cc=c***@domain.io
+---
+sender 1***@numbers.example.com
+---
+reply-to: x***@y.info
+---
+%a***@percent.example.com
+---
+email: "d***@company.cn"
+---
+r***@web01.example.com logged in
+---
+user@localhost
+---
+@mention in chat
+---
+g***@github.com:org/repo
+---
+not an email address
+---
+name@host

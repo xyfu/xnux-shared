@@ -1,0 +1,1 @@
+{ "v": 1, "seq": 1, "sent_at": 1790000000, "agent_version": "1.0.0", "machine_fp": "9c1e4b7a0d2f6e38", "redactions": {}, "events": [{ "id": "01JABCD7XK4R2N5Q8V3W6Y9Z0E", "ts": 1, "type": "oom_kill", "severity": "P5", "count": 1, "key": "k", "data": {} }] }

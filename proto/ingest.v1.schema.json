@@ -1,0 +1,437 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xnux.net/schemas/ingest.v1.schema.json",
+  "title": "Xnux ingest payload v1",
+  "description": "Request body of POST /v1/ingest (decompressed). Fields with no data are omitted; arrays are never null or empty. Unknown fields are ignored by the server.",
+  "type": "object",
+  "required": ["v", "seq", "sent_at", "agent_version", "machine_fp", "redactions"],
+  "properties": {
+    "v": { "const": 1 },
+    "seq": { "type": "integer", "minimum": 1 },
+    "part": { "type": "integer", "minimum": 1 },
+    "sent_at": { "$ref": "#/$defs/unix" },
+    "agent_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "machine_fp": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+    "host": { "$ref": "#/$defs/host" },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/metric" }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "diag": { "$ref": "#/$defs/diag" },
+    "redactions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+      "additionalProperties": { "type": "integer", "minimum": 1 }
+    }
+  },
+  "$defs": {
+    "unix": { "type": "integer", "minimum": 0 },
+    "pct": { "type": "number", "minimum": 0, "maximum": 100 },
+    "nonneg": { "type": "number", "minimum": 0 },
+    "str512": { "type": "string", "maxLength": 512 },
+
+    "host": {
+      "type": "object",
+      "required": ["hostname", "os", "kernel", "arch"],
+      "properties": {
+        "hostname": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "os": { "$ref": "#/$defs/str512" },
+        "kernel": { "type": "string", "maxLength": 128 },
+        "arch": { "type": "string", "enum": ["amd64", "arm64"] },
+        "cores": { "type": "integer", "minimum": 1 },
+        "uptime": { "type": "integer", "minimum": 0 },
+        "virt": {
+          "type": "string",
+          "enum": ["kvm", "vmware", "xen", "hyperv", "bare", "container", "unknown"]
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["metrics", "systemd", "kmsg", "authlog", "procscan", "temps"]
+          }
+        }
+      }
+    },
+
+    "metric": {
+      "type": "object",
+      "required": ["ts", "cpu", "load", "mem"],
+      "properties": {
+        "ts": { "$ref": "#/$defs/unix" },
+        "cpu": {
+          "type": "object",
+          "required": ["total_pct", "iowait_pct", "steal_pct"],
+          "properties": {
+            "total_pct": { "$ref": "#/$defs/pct" },
+            "iowait_pct": { "$ref": "#/$defs/pct" },
+            "steal_pct": { "$ref": "#/$defs/pct" }
+          }
+        },
+        "load": {
+          "type": "object",
+          "required": ["l1", "l5", "l15"],
+          "properties": {
+            "l1": { "$ref": "#/$defs/nonneg" },
+            "l5": { "$ref": "#/$defs/nonneg" },
+            "l15": { "$ref": "#/$defs/nonneg" }
+          }
+        },
+        "mem": {
+          "type": "object",
+          "required": ["total_mb", "available_mb", "used_pct"],
+          "properties": {
+            "total_mb": { "type": "integer", "minimum": 0 },
+            "available_mb": { "type": "integer", "minimum": 0 },
+            "used_pct": { "$ref": "#/$defs/pct" }
+          }
+        },
+        "swap": {
+          "type": "object",
+          "required": ["total_mb", "used_mb", "in_ps", "out_ps"],
+          "properties": {
+            "total_mb": { "type": "integer", "minimum": 1 },
+            "used_mb": { "type": "integer", "minimum": 0 },
+            "in_ps": { "$ref": "#/$defs/nonneg" },
+            "out_ps": { "$ref": "#/$defs/nonneg" }
+          }
+        },
+        "disks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": ["mount", "fs", "total_gb", "free_gb", "used_pct"],
+            "properties": {
+              "mount": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "fs": { "type": "string", "maxLength": 32 },
+              "total_gb": { "$ref": "#/$defs/nonneg" },
+              "free_gb": { "$ref": "#/$defs/nonneg" },
+              "used_pct": { "$ref": "#/$defs/pct" },
+              "inode_used_pct": { "$ref": "#/$defs/pct" },
+              "growth_mb_h": { "type": "number" },
+              "days_to_full": { "$ref": "#/$defs/nonneg" }
+            }
+          }
+        },
+        "temps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": ["name", "c"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "c": { "type": "number", "minimum": -40, "maximum": 150 }
+            }
+          }
+        }
+      }
+    },
+
+    "event": {
+      "type": "object",
+      "required": ["id", "ts", "type", "severity", "count", "key", "data"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+        "ts": { "$ref": "#/$defs/unix" },
+        "last_ts": { "$ref": "#/$defs/unix" },
+        "type": { "$ref": "#/$defs/event_type" },
+        "severity": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+        "count": { "type": "integer", "minimum": 1 },
+        "key": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "data": { "type": "object" },
+        "snapshot": { "$ref": "#/$defs/snapshot" },
+        "ts_adjusted": { "type": "boolean" }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "service_failed" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_service_failed" } } } },
+        { "if": { "properties": { "type": { "const": "service_start_failed" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_service_start_failed" } } } },
+        { "if": { "properties": { "type": { "const": "service_recovered" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_service_recovered" } } } },
+        { "if": { "properties": { "type": { "const": "oom_kill" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_oom_kill" } } } },
+        { "if": { "properties": { "type": { "const": "proc_segfault" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_proc_segfault" } } } },
+        { "if": { "properties": { "type": { "enum": ["disk_error", "fs_readonly"] } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_disk" } } } },
+        { "if": { "properties": { "type": { "const": "hung_task" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_hung_task" } } } },
+        { "if": { "properties": { "type": { "enum": ["ssh_bruteforce", "ssh_spray"] } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_ssh_attack" } } } },
+        { "if": { "properties": { "type": { "const": "ssh_breach" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_ssh_breach" } } } },
+        { "if": { "properties": { "type": { "const": "ssh_root_password_login" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_ssh_root_password_login" } } } },
+        { "if": { "properties": { "type": { "const": "sudo_sensitive" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_sudo_sensitive" } } } },
+        { "if": { "properties": { "type": { "const": "sudo_auth_fail" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_sudo_auth_fail" } } } },
+        { "if": { "properties": { "type": { "const": "user_created" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_user_created" } } } },
+        { "if": { "properties": { "type": { "const": "su_root" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_su_root" } } } },
+        { "if": { "properties": { "type": { "enum": ["proc_fileless", "proc_deleted_exe", "proc_stale_binary", "proc_tmp_exec"] } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_proc" } } } },
+        { "if": { "properties": { "type": { "const": "proc_reverse_shell" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_proc_reverse_shell" } } } },
+        { "if": { "properties": { "type": { "enum": ["swap_thrashing", "mem_pressure"] } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_mem" } } } }
+      ]
+    },
+
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "service_failed", "service_start_failed", "service_recovered",
+        "oom_kill", "proc_segfault", "disk_error", "fs_readonly", "hung_task",
+        "ssh_bruteforce", "ssh_spray", "ssh_breach", "ssh_root_password_login",
+        "sudo_sensitive", "sudo_auth_fail", "user_created", "su_root",
+        "proc_fileless", "proc_deleted_exe", "proc_stale_binary", "proc_tmp_exec", "proc_reverse_shell",
+        "swap_thrashing", "mem_pressure"
+      ]
+    },
+
+    "log_tail": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "type": "string", "maxLength": 512 }
+    },
+
+    "data_service_failed": {
+      "type": "object",
+      "required": ["unit", "result", "restarting", "n_restarts"],
+      "properties": {
+        "unit": { "$ref": "#/$defs/str512" },
+        "result": {
+          "type": "string",
+          "enum": ["exit-code", "signal", "core-dump", "timeout", "oom-kill", "watchdog", "start-limit-hit"]
+        },
+        "exit_code": { "type": "integer" },
+        "signal": { "type": "string", "pattern": "^SIG[A-Z0-9+-]+$" },
+        "restarting": { "type": "boolean" },
+        "n_restarts": { "type": "integer", "minimum": 0 },
+        "memory_peak_mb": { "type": "integer", "minimum": 0 },
+        "log_tail": { "$ref": "#/$defs/log_tail" }
+      }
+    },
+    "data_service_start_failed": {
+      "type": "object",
+      "required": ["unit", "job_result"],
+      "properties": {
+        "unit": { "$ref": "#/$defs/str512" },
+        "job_result": { "type": "string", "enum": ["failed", "timeout", "dependency"] },
+        "log_tail": { "$ref": "#/$defs/log_tail" }
+      }
+    },
+    "data_service_recovered": {
+      "type": "object",
+      "required": ["unit", "down_seconds"],
+      "properties": {
+        "unit": { "$ref": "#/$defs/str512" },
+        "down_seconds": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "data_oom_kill": {
+      "type": "object",
+      "required": ["victim", "pid", "total_vm_mb", "anon_rss_mb", "file_rss_mb", "shmem_rss_mb", "oom_score_adj", "scope"],
+      "properties": {
+        "victim": { "$ref": "#/$defs/str512" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "total_vm_mb": { "type": "integer", "minimum": 0 },
+        "anon_rss_mb": { "type": "integer", "minimum": 0 },
+        "file_rss_mb": { "type": "integer", "minimum": 0 },
+        "shmem_rss_mb": { "type": "integer", "minimum": 0 },
+        "oom_score_adj": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+        "scope": { "type": "string", "enum": ["global", "memcg"] },
+        "constraint": { "type": "string", "maxLength": 64 },
+        "memcg": { "$ref": "#/$defs/str512" }
+      }
+    },
+    "data_proc_segfault": {
+      "type": "object",
+      "required": ["comm", "pid"],
+      "properties": {
+        "comm": { "$ref": "#/$defs/str512" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "module": { "$ref": "#/$defs/str512" }
+      }
+    },
+    "data_disk": {
+      "type": "object",
+      "required": ["message"],
+      "properties": {
+        "device": { "type": "string", "maxLength": 64 },
+        "message": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "data_hung_task": {
+      "type": "object",
+      "required": ["comm", "pid", "blocked_seconds"],
+      "properties": {
+        "comm": { "$ref": "#/$defs/str512" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "blocked_seconds": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "data_ssh_attack": {
+      "type": "object",
+      "required": ["source", "fail_count", "user_count", "window_seconds"],
+      "properties": {
+        "source": { "$ref": "#/$defs/str512" },
+        "fail_count": { "type": "integer", "minimum": 0 },
+        "user_count": { "type": "integer", "minimum": 0 },
+        "top_users": { "type": "array", "minItems": 1, "maxItems": 5, "items": { "$ref": "#/$defs/str512" } },
+        "window_seconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "data_ssh_breach": {
+      "type": "object",
+      "required": ["source", "user", "method", "prior_failures"],
+      "properties": {
+        "source": { "$ref": "#/$defs/str512" },
+        "user": { "$ref": "#/$defs/str512" },
+        "method": { "type": "string", "maxLength": 64 },
+        "prior_failures": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "data_ssh_root_password_login": {
+      "type": "object",
+      "required": ["source"],
+      "properties": { "source": { "$ref": "#/$defs/str512" } }
+    },
+    "data_sudo_sensitive": {
+      "type": "object",
+      "required": ["by_user", "as_user", "command"],
+      "properties": {
+        "by_user": { "$ref": "#/$defs/str512" },
+        "as_user": { "$ref": "#/$defs/str512" },
+        "command": { "$ref": "#/$defs/str512" },
+        "pwd": { "$ref": "#/$defs/str512" }
+      }
+    },
+    "data_sudo_auth_fail": {
+      "type": "object",
+      "required": ["user", "attempts"],
+      "properties": {
+        "user": { "$ref": "#/$defs/str512" },
+        "attempts": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "data_user_created": {
+      "type": "object",
+      "required": ["name", "uid"],
+      "properties": {
+        "name": { "$ref": "#/$defs/str512" },
+        "uid": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "data_su_root": {
+      "type": "object",
+      "required": ["by_user"],
+      "properties": { "by_user": { "$ref": "#/$defs/str512" } }
+    },
+    "data_proc": {
+      "type": "object",
+      "required": ["pid", "comm", "exe"],
+      "properties": {
+        "pid": { "type": "integer", "minimum": 1 },
+        "comm": { "$ref": "#/$defs/str512" },
+        "exe": { "$ref": "#/$defs/str512" },
+        "cmdline": { "type": "string", "maxLength": 256 },
+        "uid": { "type": "integer", "minimum": 0 },
+        "ppid_comm": { "$ref": "#/$defs/str512" }
+      }
+    },
+    "data_proc_reverse_shell": {
+      "type": "object",
+      "required": ["pid", "comm", "remote"],
+      "properties": {
+        "pid": { "type": "integer", "minimum": 1 },
+        "comm": { "$ref": "#/$defs/str512" },
+        "cmdline": { "type": "string", "maxLength": 256 },
+        "uid": { "type": "integer", "minimum": 0 },
+        "ppid_comm": { "$ref": "#/$defs/str512" },
+        "remote": { "$ref": "#/$defs/str512" }
+      }
+    },
+    "data_mem": {
+      "type": "object",
+      "required": ["available_mb"],
+      "properties": {
+        "in_ps": { "$ref": "#/$defs/nonneg" },
+        "available_mb": { "type": "integer", "minimum": 0 },
+        "swap_used_mb": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "object",
+          "required": ["step"],
+          "properties": {
+            "step": { "type": "integer", "minimum": 1 },
+            "cpu_total": { "$ref": "#/$defs/nullable_series" },
+            "mem_used_pct": { "$ref": "#/$defs/nullable_series" },
+            "swap_used_mb": { "$ref": "#/$defs/nullable_series" },
+            "load1": { "$ref": "#/$defs/nullable_series" }
+          }
+        },
+        "top_rss": { "$ref": "#/$defs/proc_list" },
+        "top_cpu": { "$ref": "#/$defs/proc_list" }
+      }
+    },
+    "nullable_series": {
+      "type": "array",
+      "maxItems": 240,
+      "items": { "type": ["number", "null"] }
+    },
+    "proc_list": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["pid", "comm"],
+        "properties": {
+          "pid": { "type": "integer", "minimum": 1 },
+          "comm": { "$ref": "#/$defs/str512" },
+          "cmdline": { "type": "string", "maxLength": 256 },
+          "uid": { "type": "integer", "minimum": 0 },
+          "rss_mb": { "$ref": "#/$defs/nonneg" },
+          "cpu_pct": { "$ref": "#/$defs/nonneg" },
+          "unit": { "$ref": "#/$defs/str512" }
+        }
+      }
+    },
+
+    "diag": {
+      "type": "object",
+      "properties": {
+        "rss_mb": { "$ref": "#/$defs/nonneg" },
+        "spool_mb": { "$ref": "#/$defs/nonneg" },
+        "kmsg_lost": { "type": "integer", "minimum": 0 },
+        "dropped_metrics": { "type": "integer", "minimum": 0 },
+        "collector_errors": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+Sep 25 10:01:02 web-01 sshd[1234]: Failed password [REDACTED:secret] invalid user admin from 185.220.101.x port 51514 ssh2
+Sep 25 10:01:05 web-01 sshd[1234]: Accepted publickey for deploy from 2606:4700:4700:x:: port 50022 ssh2: RSA SHA256:abcd
+Sep 25 10:01:06 web-01 sudo:   deploy : TTY=pts/0 ; PWD=[REDACTED:secret] ; USER=root ; COMMAND=/usr/bin/mysql -uroot -p[REDACTED:secret] app
+Sep 25 10:01:07 web-01 sshd[1240]: pam_unix(sshd:session): session opened for user deploy(uid=1000) by (uid=0)
+---
+2026/09/25 10:02:03 [error] 812#812: *42 connect() failed (111: Connection refused) while connecting to upstream, client: 93.184.216.x, server: example.com, request: "GET /api/login?password=[REDACTED:secret] HTTP/1.1", upstream: "http://127.0.0.1:3000/api/login", host: "example.com"
+2026/09/25 10:02:04 [warn] 812#812: *43 upstream response is buffered, client: 10.0.0.8, request: "POST /hook HTTP/1.1", referrer: "https://[REDACTED:cred]@example.com/"
+---
+2026-09-25T10:03:00.123456Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.39) starting as process 1
+2026-09-25T10:03:01.000000Z 1 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2026-09-25T10:03:02.000000Z 0 [Note] [MY-010454] [Server] A temporary password [REDACTED:secret] generated for root@localhost: [REDACTED:secret]
+2026-09-25T10:03:03.000000Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.39'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306
+---
+app.service: Main process exited, code=dumped, status=11/SEGV
+panic: dial tcp 52.84.12.x:443: connect: connection timed out; retrying with token=[REDACTED:secret]
+contact o***@example.com, see https://status.example.com

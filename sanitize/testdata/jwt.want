@@ -1,0 +1,29 @@
+[REDACTED:jwt]
+---
+cookie: session=[REDACTED:jwt]
+---
+GET /api?jwt=[REDACTED:jwt] HTTP/1.1
+---
+{"id_token":"[REDACTED:jwt]"}
+---
+jwt1=[REDACTED:jwt] jwt2=[REDACTED:jwt]
+---
+x-auth: [REDACTED:jwt]
+---
+refresh=[REDACTED:jwt]
+---
+error: token [REDACTED:jwt] expired
+---
+Location: /cb#access=[REDACTED:jwt]
+---
+[REDACTED:jwt]
+---
+eyJhbGciOiJIUzI1NiJ9 alone is only a header
+---
+eyJshort.eyJshort.sig
+---
+header.payload.signature
+---
+eyJhbGciOiJIUzI1NiJ9.notbase64payload.sig
+---
+version 1.2.3 of eyJ-lib

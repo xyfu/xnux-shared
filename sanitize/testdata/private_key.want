@@ -1,0 +1,33 @@
+[REDACTED:private_key]
+---
+key loaded: [REDACTED:private_key] done
+---
+[REDACTED:private_key]
+---
+[REDACTED:private_key]
+---
+[REDACTED:private_key]
+---
+[REDACTED:private_key]
+---
+truncated [REDACTED:private_key]
+---
+two keys: [REDACTED:private_key] and [REDACTED:private_key]
+---
+"ssh_key": "[REDACTED:private_key]\n"
+---
+[REDACTED:private_key]
+---
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo
+-----END PUBLIC KEY-----
+---
+-----BEGIN CERTIFICATE-----
+MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ
+-----END CERTIFICATE-----
+---
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7 user@laptop
+---
+the private key file is missing
+---
+BEGIN PRIVATE KEY without dashes

@@ -1,0 +1,29 @@
+Authorization: Bearer abcdef1234567890
+---
+authorization: bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ
+---
+curl -H "Authorization: Bearer ya29.a0AfH6SMBx-token_value"
+---
+BEARER   ZmFrZXRva2VuZmFrZXRva2Vu==
+---
+got header Bearer 0123456789abcdef.more~chars+/=
+---
+{"Authorization":"Bearer sl.BAbcdefghijklmnop"}
+---
+proxy-authorization: Bearer 12345678
+---
+Bearer aaaaaaaa and Bearer bbbbbbbb
+---
+Authorization:Bearer	TTTTTTTTTTTTTTT
+---
+auth=Bearer%20abc -> Bearer abcdefghijk
+---
+Bearer short
+---
+bearer: null
+---
+the bearer of bad news
+---
+Bearer
+---
+Authorization: Basic dXNlcjpwYXNz
