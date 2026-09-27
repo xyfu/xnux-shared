@@ -40,7 +40,7 @@ func TestEveryItem(t *testing.T) {
 		set       func(*Input, float64)
 		from, to  float64
 		max       float64
-		perUnit   bool // "每条 N": deduct N per count, no ramp
+		perUnit   bool // "N each": deduct N per count, no ramp
 		booleanly bool
 	}
 	cases := []tc{
