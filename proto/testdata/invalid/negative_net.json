@@ -13,7 +13,7 @@
     "disks": [{ "mount": "/", "fs": "ext4", "total_gb": 78.6, "free_gb": 21.3,
                 "used_pct": 72.9, "inode_used_pct": 18.2, "growth_mb_h": 35.2, "days_to_full": 25.8 }],
     "temps": [{ "name": "coretemp Package id 0", "c": 52 }],
-    "net": { "rx_bps": 18400000, "tx_bps": 2150000 }
+    "net": { "rx_bps": 18400000, "tx_bps": -1 }
   }],
   "events": [{
     "id": "01JABCD7XK4R2N5Q8V3W6Y9Z0E", "ts": 1789999990, "type": "oom_kill",

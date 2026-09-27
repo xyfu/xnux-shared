@@ -104,6 +104,14 @@
             "out_ps": { "$ref": "#/$defs/nonneg" }
           }
         },
+        "net": {
+          "type": "object",
+          "required": ["rx_bps", "tx_bps"],
+          "properties": {
+            "rx_bps": { "type": "integer", "minimum": 0 },
+            "tx_bps": { "type": "integer", "minimum": 0 }
+          }
+        },
         "disks": {
           "type": "array",
           "minItems": 1,

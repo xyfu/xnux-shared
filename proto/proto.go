@@ -108,6 +108,9 @@ type Metric struct {
 	Swap  *Swap  `json:"swap,omitempty"`
 	Disks []Disk `json:"disks,omitempty"`
 	Temps []Temp `json:"temps,omitempty"`
+	// Net is omitted on the first tick and on a tick whose counters went
+	// backwards (spec v1.1 delta 9.3).
+	Net *Net `json:"net,omitempty"`
 }
 
 type CPU struct {
@@ -145,6 +148,13 @@ type Disk struct {
 	InodeUsedPct *float64 `json:"inode_used_pct,omitempty"`
 	GrowthMBH    *float64 `json:"growth_mb_h,omitempty"`
 	DaysToFull   *float64 `json:"days_to_full,omitempty"`
+}
+
+// Net is the throughput of the included interfaces, summed, in bit/s:
+// received (download) and sent (upload), as seen from the server.
+type Net struct {
+	RxBps int64 `json:"rx_bps"`
+	TxBps int64 `json:"tx_bps"`
 }
 
 type Temp struct {

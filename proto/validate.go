@@ -139,6 +139,9 @@ func (m *Metric) validate(f string) error {
 	if s := m.Swap; s != nil && (s.TotalMB < 1 || s.UsedMB < 0 || !nonNeg(s.InPS) || !nonNeg(s.OutPS)) {
 		return invalid(f+".swap", "out of range")
 	}
+	if n := m.Net; n != nil && (n.RxBps < 0 || n.TxBps < 0) {
+		return invalid(f+".net", "must be >= 0")
+	}
 	if m.Disks != nil && (len(m.Disks) == 0 || len(m.Disks) > MaxDisks) {
 		return invalid(f+".disks", "must hold 1-%d entries", MaxDisks)
 	}
