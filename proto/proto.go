@@ -75,6 +75,12 @@ const (
 	EventDockerAPIAccess = "docker_api_access"
 )
 
+// Where an exposed port listens (spec v1.1 delta 10.7): never the address.
+const (
+	BindAllInterfaces = "all_interfaces"
+	BindPublicAddress = "public_address"
+)
+
 // Payload is one POST /v1/ingest request body. Fields with no data are
 // omitted rather than sent as null or empty arrays.
 type Payload struct {
@@ -97,11 +103,15 @@ type Payload struct {
 // SecuritySummary counts the failed SSH logins of one hour. It carries no
 // authentication methods, so it does not tell whether password login is on.
 type SecuritySummary struct {
-	Start    int64       `json:"start"`
-	End      int64       `json:"end"`
-	Attempts int         `json:"attempts"`
-	Sources  int         `json:"sources"`
-	TopUsers []UserCount `json:"top_users,omitempty"` // most tried first, at most 5
+	Start        int64 `json:"start"`
+	End          int64 `json:"end"`
+	Attempts     int   `json:"attempts"`
+	RootAttempts int   `json:"root_attempts"` // of Attempts, those on the user root
+	Sources      int   `json:"sources"`       // distinct source addresses in the hour
+	// Sources24h is the distinct source addresses of the 24 hours up to
+	// End, counted on the agent (addresses are never sent).
+	Sources24h int         `json:"sources_24h"`
+	TopUsers   []UserCount `json:"top_users,omitempty"` // most tried first, at most 5
 }
 
 // UserCount is how often a user name was tried.

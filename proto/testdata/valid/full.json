@@ -39,18 +39,19 @@
     "id": "01JABCD7XK4R2N5Q8V3W6Y9Z0H", "ts": 1789999996, "last_ts": 1790000000, "type": "ssh_bruteforce",
     "severity": "P1", "count": 3, "key": "ssh_bruteforce",
     "data": { "source": "198.51.100.x", "fail_count": 412, "user_count": 9, "top_users": ["root", "admin"],
-              "window_seconds": 600, "source_count": 4, "root_attempts": 188 }
+              "window_seconds": 600, "source_count": 4, "root_attempts": 188,
+              "root_password": true }
   }, {
     "id": "01JABCD7XK4R2N5Q8V3W6Y9Z0J", "ts": 1789999997, "type": "db_public_access",
     "severity": "P1", "count": 1, "key": "db_public_access:6379",
-    "data": { "port": 6379, "service": "redis", "connections": 3, "sources": ["198.51.100.x"] }
+    "data": { "port": 6379, "service": "redis", "bind_scope": "all_interfaces", "connections": 3, "sources": ["198.51.100.x"] }
   }, {
     "id": "01JABCD7XK4R2N5Q8V3W6Y9Z0K", "ts": 1789999998, "type": "docker_api_access",
     "severity": "P0", "count": 1, "key": "docker_api_access:2375",
-    "data": { "port": 2375, "connections": 1, "sources": ["198.51.100.x"] }
+    "data": { "port": 2375, "tls": false, "bind_scope": "all_interfaces", "connections": 1, "sources": ["198.51.100.x"] }
   }],
   "diag": { "rss_mb": 11.2, "spool_mb": 0, "kmsg_lost": 0, "dropped_metrics": 0, "collector_errors": { "temps": 1 } },
-  "security_summary": { "start": 1789996400, "end": 1790000000, "attempts": 1830, "sources": 57,
+  "security_summary": { "start": 1789996400, "end": 1790000000, "attempts": 1830, "root_attempts": 912, "sources": 57, "sources_24h": 311,
                         "top_users": [{ "user": "root", "count": 912 }, { "user": "admin", "count": 140 }] },
   "redactions": { "kv_secret": 1, "ipv4": 1 }
 }

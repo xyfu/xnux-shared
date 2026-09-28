@@ -125,7 +125,8 @@ func (p *Payload) Validate() error {
 		}
 	}
 	if s := p.SecuritySummary; s != nil {
-		if s.Start < 0 || s.End < s.Start || s.Attempts < 0 || s.Sources < 0 || len(s.TopUsers) > MaxTopUsers {
+		if s.Start < 0 || s.End < s.Start || s.Attempts < 0 || s.RootAttempts < 0 || s.RootAttempts > s.Attempts ||
+			s.Sources < 0 || s.Sources24h < 0 || len(s.TopUsers) > MaxTopUsers {
 			return invalid("security_summary", "out of range")
 		}
 		for _, u := range s.TopUsers {
