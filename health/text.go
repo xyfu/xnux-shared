@@ -47,6 +47,9 @@ func Describe(item string, value float64, subject, lang string) string {
 	if strings.HasPrefix(lang, "en") {
 		f = p.en
 	}
+	if !strings.Contains(f, "%[") {
+		return f // no placeholders: Sprintf would append %!(EXTRA …)
+	}
 	if subject == "" {
 		subject = "/"
 	}

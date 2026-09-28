@@ -3,6 +3,7 @@ package health
 import (
 	"encoding/json"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -209,5 +210,17 @@ func TestSuggestionsAreNotScored(t *testing.T) {
 	r := Score(Input{AgentOutdated: true})
 	if r.Score != 100 || len(r.Suggestions) != 1 {
 		t.Fatalf("%+v", r)
+	}
+}
+
+// Every phrase renders cleanly in both languages, with or without
+// placeholders.
+func TestDescribeAll(t *testing.T) {
+	for item := range phrases {
+		for _, lang := range []string{"zh-CN", "en"} {
+			if got := Describe(item, 3, "/data", lang); strings.Contains(got, "%!") {
+				t.Errorf("%s (%s): %q", item, lang, got)
+			}
+		}
 	}
 }
