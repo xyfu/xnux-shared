@@ -27,3 +27,19 @@ multicast 224.0.0.251 reserved 240.0.0.1
 not ip 999.1.1.1 or 01.02.03.04
 ---
 version 1.2.3
+---
+hostname vps-8-8-8-8.example.com
+---
+ec2-54-12-34-56.compute-1.amazonaws.com
+---
+8-8-8-8.static.isp.net
+---
+private ip-172-31-5-10.ec2.internal ip-10-0-1-5
+---
+reverse dns static.4.3.2.1.clients.your-server.de
+---
+forward in a name 93.184.216.34.nip.io
+---
+private both ways 10.0.0.10.internal
+---
+not an address 2026-09-28-10-30 or 1-800-555-1234

@@ -131,23 +131,25 @@ func TestRedactionMarkers(t *testing.T) {
 	if err := json.Unmarshal(RedactionMarkers, &markers); err != nil {
 		t.Fatal(err)
 	}
-	samples := map[string]string{
-		"tagged": "password=[REDACTED:secret]",
-		"ipv4":   "from 203.0.113.x port 22",
-		"ipv6":   "from 2001:db8:85a3:x:: port 22",
-		"email":  "user j***@example.com",
+	samples := map[string][]string{
+		"tagged": {"password=[REDACTED:secret]"},
+		"ipv4":   {"from 203.0.113.x port 22", "host vps-203-0-113-x.example.com", "static.x.113.0.x.clients.example.net"},
+		"ipv6":   {"from 2001:db8:85a3:x:: port 22"},
+		"email":  {"user j***@example.com"},
 	}
 	for _, m := range markers {
 		re, err := regexp.Compile(m.Re)
 		if err != nil {
 			t.Fatalf("%s: %v", m.Rule, err)
 		}
-		sample, ok := samples[m.Rule]
+		ss, ok := samples[m.Rule]
 		if !ok {
 			t.Fatalf("no sample for marker rule %q", m.Rule)
 		}
-		if !re.MatchString(sample) {
-			t.Errorf("%s: %q does not match %q", m.Rule, m.Re, sample)
+		for _, sample := range ss {
+			if !re.MatchString(sample) {
+				t.Errorf("%s: %q does not match %q", m.Rule, m.Re, sample)
+			}
 		}
 	}
 	if len(markers) != len(samples) {

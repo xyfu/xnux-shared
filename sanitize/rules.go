@@ -151,6 +151,7 @@ func builtinRules(maskEmail bool) []rule {
 	}
 	return append(rules,
 		rule{name: RuleIPv4, pre: has("."), find: findIPv4, fn: maskIPv4, network: true},
+		rule{name: RuleIPv4, pre: has("-"), find: findIPv4Dashed, fn: maskIPv4, network: true},
 		rule{name: RuleIPv6, pre: func(s, _ string) bool { return strings.Count(s, ":") >= 2 },
 			find: findIPv6, fn: maskIPv6, network: true},
 	)
@@ -372,14 +373,28 @@ func isSpace(c byte) bool {
 }
 
 // findIPv4 matches \b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b by hand.
-func findIPv4(s, _ string) [][]int {
+func findIPv4(s, _ string) [][]int { return findQuad(s, '.') }
+
+// findIPv4Dashed finds the "1-2-3-4" form hostnames carry
+// (ec2-1-2-3-4.compute-1.amazonaws.com, vps-1-2-3-4.example.com); a longer
+// run of dashed numbers (a date and time) is not an address.
+func findIPv4Dashed(s, _ string) [][]int { return findQuad(s, '-') }
+
+// findQuad finds four 1-3 digit groups joined by sep, not glued to a word.
+// Submatches 1-4 are the groups; submatch 5 is the whole match when it is
+// part of a DNS name ("static.4.3.2.1.clients.example.net"), where the
+// address may be written in reverse.
+func findQuad(s string, sep byte) [][]int {
 	var out [][]int
 	for i := 0; i < len(s); i++ {
 		if !isDigit(s[i]) || (i > 0 && isWord(s[i-1])) {
 			continue
 		}
-		var m [10]int
-		m[0] = i
+		if sep == '-' && numericBefore(s, i) {
+			continue
+		}
+		var m [12]int
+		m[0], m[10], m[11] = i, -1, -1
 		p, ok := i, true
 		for oct := range 4 {
 			q := p
@@ -392,13 +407,13 @@ func findIPv4(s, _ string) [][]int {
 			}
 			m[2+2*oct], m[3+2*oct] = p, q
 			if oct < 3 {
-				if q >= len(s) || s[q] != '.' {
+				if q >= len(s) || s[q] != sep {
 					ok = false
 					break
 				}
 				p = q + 1
 			} else {
-				if q < len(s) && isWord(s[q]) {
+				if q < len(s) && (isWord(s[q]) || sep == '-' && s[q] == '-' && q+1 < len(s) && isDigit(s[q+1])) {
 					ok = false
 					break
 				}
@@ -407,12 +422,31 @@ func findIPv4(s, _ string) [][]int {
 		}
 		if ok {
 			m[1] = p
+			if sep == '.' && ((p+1 < len(s) && s[p] == '.' && isLetter(s[p+1])) || (i >= 2 && s[i-1] == '.' && isLetter(s[i-2]))) {
+				m[10], m[11] = i, p
+			}
 			out = append(out, m[:])
 			i = p - 1
 		}
 	}
 	return out
 }
+
+// numericBefore reports whether s[i] follows "-" after a group of digits
+// that is not the tail of a word: "2026-09-28-10-30" is one run of numbers,
+// while "ec2-54-12-34-56" starts one after the word "ec2".
+func numericBefore(s string, i int) bool {
+	if i < 2 || s[i-1] != '-' || !isDigit(s[i-2]) {
+		return false
+	}
+	j := i - 2
+	for j > 0 && isDigit(s[j-1]) {
+		j--
+	}
+	return j == 0 || !isWord(s[j-1])
+}
+
+func isLetter(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' }
 
 // findIPv6 mirrors [0-9A-Fa-f:]{2,39}(%\w+)? (leftmost, greedy), keeping only
 // candidates with at least two colons that are not glued to a word, so
@@ -480,11 +514,24 @@ func isPrivate(a netip.Addr) bool {
 }
 
 func maskIPv4(sub []string) string {
-	a, err := netip.ParseAddr(sub[0])
-	if err != nil || !a.Is4() || isPrivate(a) {
+	sep := string(sub[0][len(sub[1])])
+	a, err := netip.ParseAddr(sub[1] + "." + sub[2] + "." + sub[3] + "." + sub[4])
+	if err != nil || !a.Is4() {
 		return sub[0]
 	}
-	return sub[1] + "." + sub[2] + "." + sub[3] + ".x"
+	if len(sub) > 5 && sub[5] != "" {
+		// Inside a DNS name the order is unknown (reverse DNS names write it
+		// backwards): unless both readings are private, mask both ends.
+		r, err := netip.ParseAddr(sub[4] + "." + sub[3] + "." + sub[2] + "." + sub[1])
+		if err == nil && isPrivate(a) && isPrivate(r) {
+			return sub[0]
+		}
+		return "x" + sep + sub[2] + sep + sub[3] + sep + "x"
+	}
+	if isPrivate(a) {
+		return sub[0]
+	}
+	return sub[1] + sep + sub[2] + sep + sub[3] + sep + "x"
 }
 
 // globalUnicast is 2000::/3, where every publicly routed IPv6 address lives.
