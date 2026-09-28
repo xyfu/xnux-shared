@@ -1,16 +1,16 @@
 package proto
 
-// Split divides a payload in two for size limits: events (with host and
-// diag) go first and metrics second; a payload holding only one kind is
-// halved. Both halves keep the header fields and redaction counts; ok is
-// false when p cannot be split further. Callers set Part.
+// Split divides a payload in two for size limits: events (with host, diag
+// and the security summary) go first and metrics second; a payload holding
+// only one kind is halved. Both halves keep the header fields and redaction
+// counts; ok is false when p cannot be split further. Callers set Part.
 func Split(p *Payload) (a, b *Payload, ok bool) {
 	hdr := func() *Payload {
 		return &Payload{V: p.V, Seq: p.Seq, Part: p.Part, SentAt: p.SentAt, AgentVersion: p.AgentVersion,
 			MachineFP: p.MachineFP, Redactions: copyCounts(p.Redactions)}
 	}
 	a, b = hdr(), hdr()
-	a.Host, a.Diag = p.Host, p.Diag
+	a.Host, a.Diag, a.SecuritySummary = p.Host, p.Diag, p.SecuritySummary
 	switch {
 	case len(p.Events) > 0 && len(p.Metrics) > 0:
 		a.Events, b.Metrics = p.Events, p.Metrics

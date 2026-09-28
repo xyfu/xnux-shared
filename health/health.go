@@ -12,7 +12,11 @@ import (
 
 // Algo names this version of the rules. Changing a weight or a threshold
 // means a new version.
-const Algo = "health/v1"
+//
+// v2 (spec v1.1 delta 10.5): brute force and spray deduct once per server
+// (5, or 8 while root may use a password) instead of 3 per event, and an
+// open db_public_access deducts 8.
+const Algo = "health/v2"
 
 // Dimensions.
 const (
@@ -59,9 +63,14 @@ type Input struct {
 	InodeMount     string
 
 	// Security
-	OpenP1Security    int  // unresolved P1 security events
-	OpenP2Security    int  // unresolved P2 security events
+	OpenP1Security    int  // unresolved P1 security events, brute force and spray aside
+	OpenP2Security    int  // unresolved P2 security events, brute force and spray aside
 	RootPasswordLogin bool // ssh_root_password_login within 24h
+	// OpenSSHAttack is the most severe unresolved ssh_bruteforce or
+	// ssh_spray: 0 none, 2 a P2 one (password login on), 1 a P1 one (root
+	// may use a password too).
+	OpenSSHAttack int
+	OpenDBPublic  int // unresolved db_public_access events
 
 	// Hardware and kernel
 	TempMaxP95  *float64 // °C, hottest sensor
@@ -179,6 +188,15 @@ func Score(in Input) Result {
 	}
 	if in.RootPasswordLogin {
 		add(DimSecurity, "root_password_login", 1, 5, "")
+	}
+	switch in.OpenSSHAttack {
+	case 1:
+		add(DimSecurity, "open_ssh_attack_root", 1, 8, "")
+	case 2:
+		add(DimSecurity, "open_ssh_attack", 1, 5, "")
+	}
+	if in.OpenDBPublic > 0 {
+		add(DimSecurity, "open_db_public_access", float64(in.OpenDBPublic), 8, "")
 	}
 
 	// Hardware and kernel (5)

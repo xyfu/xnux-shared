@@ -59,6 +59,9 @@ func TestEveryItem(t *testing.T) {
 		{item: "open_p1_security", set: func(in *Input, v float64) { in.OpenP1Security = int(v) }, max: 8, perUnit: true},
 		{item: "open_p2_security", set: func(in *Input, v float64) { in.OpenP2Security = int(v) }, max: 3, perUnit: true},
 		{item: "root_password_login", set: func(in *Input, v float64) { in.RootPasswordLogin = v > 0 }, max: 5, booleanly: true},
+		{item: "open_ssh_attack", set: func(in *Input, v float64) { in.OpenSSHAttack = 2 * int(v) }, max: 5, booleanly: true},
+		{item: "open_ssh_attack_root", set: func(in *Input, v float64) { in.OpenSSHAttack = int(v) }, max: 8, booleanly: true},
+		{item: "open_db_public_access", set: func(in *Input, v float64) { in.OpenDBPublic = int(v) }, max: 8, booleanly: true},
 		{item: "temp_p95", set: func(in *Input, v float64) { in.TempMaxP95 = f(v) }, from: 75, to: 95, max: 3},
 		{item: "hung_task_24h", set: func(in *Input, v float64) { in.HungTask24h = int(v) }, from: 0, to: 5, max: 3},
 	}

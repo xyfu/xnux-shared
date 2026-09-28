@@ -1,0 +1,8 @@
+{
+  "v": 1, "seq": 7, "sent_at": 1790000000,
+  "agent_version": "1.0.0", "machine_fp": "9c1e4b7a0d2f6e38",
+  "security_summary": { "start": 1789996400, "end": 1790000000, "attempts": 10, "sources": 2,
+                        "top_users": [{ "user": "a", "count": 1 }, { "user": "b", "count": 1 }, { "user": "c", "count": 1 },
+                                      { "user": "d", "count": 1 }, { "user": "e", "count": 1 }, { "user": "f", "count": 1 }] },
+  "redactions": {}
+}

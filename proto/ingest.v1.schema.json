@@ -25,6 +25,7 @@
       "items": { "$ref": "#/$defs/event" }
     },
     "diag": { "$ref": "#/$defs/diag" },
+    "security_summary": { "$ref": "#/$defs/security_summary" },
     "redactions": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z0-9_]+$" },
@@ -196,7 +197,11 @@
         { "if": { "properties": { "type": { "const": "proc_reverse_shell" } } },
           "then": { "properties": { "data": { "$ref": "#/$defs/data_proc_reverse_shell" } } } },
         { "if": { "properties": { "type": { "enum": ["swap_thrashing", "mem_pressure"] } } },
-          "then": { "properties": { "data": { "$ref": "#/$defs/data_mem" } } } }
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_mem" } } } },
+        { "if": { "properties": { "type": { "const": "db_public_access" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_db_public_access" } } } },
+        { "if": { "properties": { "type": { "const": "docker_api_access" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/data_docker_api_access" } } } }
       ]
     },
 
@@ -208,7 +213,8 @@
         "ssh_bruteforce", "ssh_spray", "ssh_breach", "ssh_root_password_login",
         "sudo_sensitive", "sudo_auth_fail", "user_created", "su_root",
         "proc_fileless", "proc_deleted_exe", "proc_stale_binary", "proc_tmp_exec", "proc_reverse_shell",
-        "swap_thrashing", "mem_pressure"
+        "swap_thrashing", "mem_pressure",
+        "db_public_access", "docker_api_access"
       ]
     },
 
@@ -303,7 +309,28 @@
         "fail_count": { "type": "integer", "minimum": 0 },
         "user_count": { "type": "integer", "minimum": 0 },
         "top_users": { "type": "array", "minItems": 1, "maxItems": 5, "items": { "$ref": "#/$defs/str512" } },
-        "window_seconds": { "type": "integer", "minimum": 1 }
+        "window_seconds": { "type": "integer", "minimum": 1 },
+        "source_count": { "type": "integer", "minimum": 0 },
+        "root_attempts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "data_db_public_access": {
+      "type": "object",
+      "required": ["port", "service", "connections"],
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "service": { "type": "string", "maxLength": 64 },
+        "connections": { "type": "integer", "minimum": 1 },
+        "sources": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "$ref": "#/$defs/str512" } }
+      }
+    },
+    "data_docker_api_access": {
+      "type": "object",
+      "required": ["port", "connections"],
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "connections": { "type": "integer", "minimum": 1 },
+        "sources": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "$ref": "#/$defs/str512" } }
       }
     },
     "data_ssh_breach": {
@@ -424,6 +451,30 @@
           "rss_mb": { "$ref": "#/$defs/nonneg" },
           "cpu_pct": { "$ref": "#/$defs/nonneg" },
           "unit": { "$ref": "#/$defs/str512" }
+        }
+      }
+    },
+
+    "security_summary": {
+      "type": "object",
+      "required": ["start", "end", "attempts", "sources"],
+      "properties": {
+        "start": { "$ref": "#/$defs/unix" },
+        "end": { "$ref": "#/$defs/unix" },
+        "attempts": { "type": "integer", "minimum": 0 },
+        "sources": { "type": "integer", "minimum": 0 },
+        "top_users": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["user", "count"],
+            "properties": {
+              "user": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
         }
       }
     },

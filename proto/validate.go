@@ -46,7 +46,12 @@ var EventTypes = map[string][]string{
 	EventProcReverseShell:     {"pid", "comm", "remote"},
 	EventSwapThrashing:        {"available_mb"},
 	EventMemPressure:          {"available_mb"},
+	EventDBPublicAccess:       {"port", "service", "connections"},
+	EventDockerAPIAccess:      {"port", "connections"},
 }
+
+// MaxTopUsers bounds security_summary.top_users.
+const MaxTopUsers = 5
 
 var severities = map[string]bool{SeverityP0: true, SeverityP1: true, SeverityP2: true, SeverityP3: true}
 
@@ -117,6 +122,16 @@ func (p *Payload) Validate() error {
 	for i := range p.Events {
 		if err := p.Events[i].validate(fmt.Sprintf("events[%d]", i)); err != nil {
 			return err
+		}
+	}
+	if s := p.SecuritySummary; s != nil {
+		if s.Start < 0 || s.End < s.Start || s.Attempts < 0 || s.Sources < 0 || len(s.TopUsers) > MaxTopUsers {
+			return invalid("security_summary", "out of range")
+		}
+		for _, u := range s.TopUsers {
+			if u.User == "" || len(u.User) > MaxStringLen || u.Count < 1 {
+				return invalid("security_summary.top_users", "entry out of range")
+			}
 		}
 	}
 	return nil

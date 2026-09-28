@@ -69,22 +69,45 @@ const (
 	EventProcReverseShell     = "proc_reverse_shell"
 	EventSwapThrashing        = "swap_thrashing"
 	EventMemPressure          = "mem_pressure"
+	// Reported only while the agent's local risk scan finds the port
+	// exposed (spec v1.1 delta 10.4).
+	EventDBPublicAccess  = "db_public_access"
+	EventDockerAPIAccess = "docker_api_access"
 )
 
 // Payload is one POST /v1/ingest request body. Fields with no data are
 // omitted rather than sent as null or empty arrays.
 type Payload struct {
-	V            int            `json:"v"`
-	Seq          uint64         `json:"seq"`
-	Part         int            `json:"part,omitempty"`
-	SentAt       int64          `json:"sent_at"`
-	AgentVersion string         `json:"agent_version" sanitize:"trusted"`
-	MachineFP    string         `json:"machine_fp"`
-	Host         *Host          `json:"host,omitempty"`
-	Metrics      []Metric       `json:"metrics,omitempty"`
-	Events       []Event        `json:"events,omitempty"`
-	Diag         *Diag          `json:"diag,omitempty"`
-	Redactions   map[string]int `json:"redactions"`
+	V            int      `json:"v"`
+	Seq          uint64   `json:"seq"`
+	Part         int      `json:"part,omitempty"`
+	SentAt       int64    `json:"sent_at"`
+	AgentVersion string   `json:"agent_version" sanitize:"trusted"`
+	MachineFP    string   `json:"machine_fp"`
+	Host         *Host    `json:"host,omitempty"`
+	Metrics      []Metric `json:"metrics,omitempty"`
+	Events       []Event  `json:"events,omitempty"`
+	Diag         *Diag    `json:"diag,omitempty"`
+	// SecuritySummary is sent once an hour, whatever the risk scan found
+	// (spec v1.1 delta 10.4).
+	SecuritySummary *SecuritySummary `json:"security_summary,omitempty"`
+	Redactions      map[string]int   `json:"redactions"`
+}
+
+// SecuritySummary counts the failed SSH logins of one hour. It carries no
+// authentication methods, so it does not tell whether password login is on.
+type SecuritySummary struct {
+	Start    int64       `json:"start"`
+	End      int64       `json:"end"`
+	Attempts int         `json:"attempts"`
+	Sources  int         `json:"sources"`
+	TopUsers []UserCount `json:"top_users,omitempty"` // most tried first, at most 5
+}
+
+// UserCount is how often a user name was tried.
+type UserCount struct {
+	User  string `json:"user"`
+	Count int    `json:"count"`
 }
 
 // Host is sent at start-up, every 6 hours and whenever it changes (spec A2.7).
