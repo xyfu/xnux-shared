@@ -16,7 +16,14 @@ import (
 // v2 (spec v1.1 delta 10.5): brute force and spray deduct once per server
 // (5, or 8 while root may use a password) instead of 3 per event, and an
 // open db_public_access deducts 8.
-const Algo = "health/v2"
+//
+// v3 (xnux-pm specs/05 §8.5, §14.1, decisions L16, L24): event items are one
+// deduction per event, with its state and what resolving it would give
+// back; an event resolved by hand but still failing deducts half; a
+// recurrence within 7 days deducts 1.5 times; accepted (suppressed) items
+// deduct nothing; ssh_root_password_login only counts as "seen in 24 h";
+// an open docker_api_access caps the score at 20.
+const Algo = "health/v3"
 
 // Dimensions.
 const (
@@ -35,16 +42,50 @@ const (
 	LevelCritical = "critical" // 0–39
 )
 
+// Event states (C-API-HEALTH deductions[].state).
+const (
+	StateOpen             = "open"              // needs handling
+	StateInProgress       = "in_progress"       // acknowledged: someone is on it
+	StateAwaitingRecovery = "awaiting_recovery" // resolved by hand, still failing
+)
+
+// Event is an event that costs points: in progress and not suppressed, or
+// resolved by hand while still failing (awaiting recovery).
+type Event struct {
+	ID       string
+	Type     string
+	Severity int // 0 = P0
+	State    string
+	Subject  string // a unit, a port… shown with the item
+	// Recurrent: it recurs within 7 days of the previous one ending (L16):
+	// its event item deducts 1.5 times.
+	Recurrent bool
+	// Count24h and Count1h are its occurrences included in the 24-hour and
+	// 1-hour counts of Input: resolving it takes them out.
+	Count24h, Count1h int
+}
+
+// Accept is an item the user accepted (a suppression, delta 13.6): it is
+// listed instead of deducted. An empty Subject matches any subject.
+type Accept struct {
+	Item    string `json:"item"`
+	Subject string `json:"subject,omitempty"`
+}
+
 // Input is what the score is computed from. Resource figures are P95 (P5
 // for available memory) over the last hour of 1-minute aggregates; counts
-// are over the last 24 hours unless named "Open" (unresolved now). A nil
-// pointer means the host has no such data (no swap, no sensors), and that
-// item deducts nothing.
+// are occurrences in the last 24 hours (by when they happened), without
+// those of events the user resolved. A nil pointer means the host has no
+// such data (no swap, no sensors), and that item deducts nothing.
 type Input struct {
+	// Events that cost points by themselves (see Event).
+	Events []Event
+	// Accepted items deduct nothing (see Accept).
+	Accepted []Accept
+
 	// Stability
-	OpenServiceFailed int // unresolved service_failed events
 	OOM24h            int
-	ServiceCrashes24h int // service_failed events in 24h, recovered or not
+	ServiceCrashes24h int // service_failed occurrences, recovered on their own or not
 	Segfaults24h      int
 
 	// Resource pressure
@@ -63,24 +104,15 @@ type Input struct {
 	InodeMount     string
 
 	// Security
-	OpenP1Security    int  // unresolved P1 security events, brute force and spray aside
-	OpenP2Security    int  // unresolved P2 security events, brute force and spray aside
 	RootPasswordLogin bool // ssh_root_password_login within 24h
-	// OpenSSHAttack is the most severe unresolved ssh_bruteforce or
-	// ssh_spray: 0 none, 2 a P2 one (password login on), 1 a P1 one (root
-	// may use a password too).
-	OpenSSHAttack int
-	OpenDBPublic  int // unresolved db_public_access events
 
 	// Hardware and kernel
 	TempMaxP95  *float64 // °C, hottest sensor
 	HungTask24h int
 
 	// Hard caps
-	OpenP0Intrusion int      // unresolved ssh_breach or proc_reverse_shell
-	OpenDiskFailure int      // unresolved disk_error or fs_readonly
-	OOM1h           int      // OOM kills in the last hour
-	MemAvailNow     *float64 // % of total, latest minute
+	OOM1h       int      // OOM kills in the last hour
+	MemAvailNow *float64 // % of total, latest minute
 
 	// Maintenance (suggestions only, never deducted)
 	AgentOutdated bool
@@ -92,13 +124,21 @@ type Deduction struct {
 	Item    string  `json:"item"`
 	Value   float64 `json:"value"`
 	Deduct  float64 `json:"deduct"`
-	Subject string  `json:"subject,omitempty"` // a mount point, when the item has one
+	Subject string  `json:"subject,omitempty"` // a mount point or a unit, when the item has one
+	// EventID, State and Gain: the event behind the item, its state and the
+	// points resolving it would give back (v3).
+	EventID string `json:"event_id,omitempty"`
+	State   string `json:"state,omitempty"`
+	Gain    int    `json:"gain_if_resolved,omitempty"`
 }
 
 // Cap is a hard ceiling that applied.
 type Cap struct {
-	Item  string `json:"item"`
-	Limit int    `json:"limit"`
+	Item    string `json:"item"`
+	Limit   int    `json:"limit"`
+	EventID string `json:"event_id,omitempty"`
+	State   string `json:"state,omitempty"`
+	Gain    int    `json:"gain_if_resolved,omitempty"`
 }
 
 // Result is a score with its explanation.
@@ -108,6 +148,7 @@ type Result struct {
 	Algo        string      `json:"algo"`
 	Deductions  []Deduction `json:"deductions"`            // largest first
 	Cap         *Cap        `json:"cap,omitempty"`         // the lowest ceiling that applied
+	Accepted    []Accept    `json:"accepted,omitempty"`    // items the user accepted, not deducted
 	Suggestions []string    `json:"suggestions,omitempty"` // maintenance hints, not scored
 }
 
@@ -130,6 +171,7 @@ type item struct {
 	value   float64
 	deduct  float64
 	subject string
+	ev      *Event
 }
 
 // dimension caps (spec delta 8.2).
@@ -137,20 +179,111 @@ var dimMax = map[string]float64{
 	DimStability: 30, DimResources: 25, DimCapacity: 20, DimSecurity: 20, DimHardware: 5,
 }
 
-// Score computes the health of one server.
+// Event types by how they cost points.
+var (
+	serviceTypes  = map[string]bool{"service_failed": true, "service_start_failed": true}
+	securityTypes = map[string]bool{"sudo_sensitive": true, "sudo_auth_fail": true, "su_root": true, "user_created": true,
+		"proc_fileless": true, "proc_deleted_exe": true, "proc_stale_binary": true, "proc_tmp_exec": true}
+	attackTypes    = map[string]bool{"ssh_bruteforce": true, "ssh_spray": true}
+	intrusionTypes = map[string]bool{"ssh_breach": true, "proc_reverse_shell": true}
+	diskTypes      = map[string]bool{"disk_error": true, "fs_readonly": true}
+	// countOf names the 24-hour count an event type's occurrences are in.
+	countOf = map[string]string{"oom_kill": "oom_24h", "service_failed": "service_crashes_24h",
+		"proc_segfault": "segfaults_24h", "hung_task": "hung_task_24h"}
+)
+
+// weight is what an event item deducts, given its base: half while
+// awaiting recovery, 1.5 times for a recurrence.
+func weight(e *Event, base float64) float64 {
+	if e.State == StateAwaitingRecovery {
+		base /= 2
+	}
+	if e.Recurrent {
+		base *= 1.5
+	}
+	return base
+}
+
+// Score computes the health of one server, with what resolving each of its
+// events would give back.
 func Score(in Input) Result {
-	var items []item
-	add := func(dim, name string, value, deduct float64, subject string) {
-		if deduct > 0 {
-			items = append(items, item{dim, name, value, deduct, subject})
+	res := score(in)
+	gain := map[string]int{}
+	for i := range in.Events {
+		gain[in.Events[i].ID] = max(0, score(without(in, i)).Score-res.Score)
+	}
+	for i := range res.Deductions {
+		if id := res.Deductions[i].EventID; id != "" {
+			res.Deductions[i].Gain = gain[id]
 		}
+	}
+	if res.Cap != nil && res.Cap.EventID != "" {
+		res.Cap.Gain = gain[res.Cap.EventID]
+	}
+	return res
+}
+
+// without is in as if event i were resolved by the user: gone, with its
+// occurrences out of the counts.
+func without(in Input, i int) Input {
+	e := in.Events[i]
+	out := in
+	out.Events = append(append([]Event(nil), in.Events[:i]...), in.Events[i+1:]...)
+	switch countOf[e.Type] {
+	case "oom_24h":
+		out.OOM24h, out.OOM1h = max(0, out.OOM24h-e.Count24h), max(0, out.OOM1h-e.Count1h)
+	case "service_crashes_24h":
+		out.ServiceCrashes24h = max(0, out.ServiceCrashes24h-e.Count24h)
+	case "segfaults_24h":
+		out.Segfaults24h = max(0, out.Segfaults24h-e.Count24h)
+	case "hung_task_24h":
+		out.HungTask24h = max(0, out.HungTask24h-e.Count24h)
+	}
+	return out
+}
+
+func score(in Input) Result {
+	var items []item
+	var accepted []Accept
+	isAccepted := func(name, subject string) bool {
+		for _, a := range in.Accepted {
+			if a.Item == name && (a.Subject == "" || a.Subject == subject) {
+				return true
+			}
+		}
+		return false
+	}
+	addEv := func(dim, name string, value, deduct float64, subject string, ev *Event) {
+		if deduct <= 0 {
+			return
+		}
+		if isAccepted(name, subject) {
+			accepted = append(accepted, Accept{Item: name, Subject: subject})
+			return
+		}
+		items = append(items, item{dim, name, value, deduct, subject, ev})
+	}
+	add := func(dim, name string, value, deduct float64, subject string) {
+		addEv(dim, name, value, deduct, subject, nil)
+	}
+	// The event behind a count item: the one still going on with the most
+	// occurrences in it.
+	behind := func(count string) *Event {
+		var best *Event
+		for i := range in.Events {
+			e := &in.Events[i]
+			if countOf[e.Type] == count && e.State != StateAwaitingRecovery && (best == nil || e.Count24h > best.Count24h) {
+				best = e
+			}
+		}
+		return best
 	}
 	// Counts deduct from the start point on: the spec's start point N is
 	// passed as N-1, so the Nth occurrence already costs points (one OOM
 	// costs 3 of 15; the third segfault costs 5/18 of 5).
 	count := func(dim, name string, n int, from, to, max float64) {
 		if n > 0 {
-			add(dim, name, float64(n), linear(float64(n), from, to, max), "")
+			addEv(dim, name, float64(n), linear(float64(n), from, to, max), "", behind(name))
 		}
 	}
 	opt := func(dim, name string, v *float64, from, to, max float64, subject string) {
@@ -159,10 +292,37 @@ func Score(in Input) Result {
 		}
 	}
 
-	// Stability (30)
-	if in.OpenServiceFailed > 0 {
-		add(DimStability, "open_service_failed", float64(in.OpenServiceFailed), 10*float64(in.OpenServiceFailed), "")
+	// Events, one item each; some set a ceiling instead.
+	var attack *Event
+	var caps []Cap
+	capFor := func(name string, limit int, e *Event) {
+		caps = append(caps, Cap{Item: name, Limit: limit, EventID: e.ID, State: e.State})
 	}
+	for i := range in.Events {
+		e := &in.Events[i]
+		switch {
+		case serviceTypes[e.Type]:
+			addEv(DimStability, "open_service_failed", 1, weight(e, 10), e.Subject, e)
+		case securityTypes[e.Type] && e.Severity == 1:
+			addEv(DimSecurity, "open_p1_security", 1, weight(e, 8), e.Subject, e)
+		case securityTypes[e.Type] && e.Severity == 2:
+			addEv(DimSecurity, "open_p2_security", 1, weight(e, 3), e.Subject, e)
+		case attackTypes[e.Type]:
+			if attack == nil || e.Severity < attack.Severity {
+				attack = e
+			}
+		case e.Type == "db_public_access":
+			addEv(DimSecurity, "open_db_public_access", 1, weight(e, 8), e.Subject, e)
+		case intrusionTypes[e.Type]:
+			capFor("open_p0_intrusion", 20, e)
+		case e.Type == "docker_api_access":
+			capFor("open_docker_api", 20, e)
+		case diskTypes[e.Type]:
+			capFor("open_disk_failure", 40, e)
+		}
+	}
+
+	// Stability (30)
 	count(DimStability, "oom_24h", in.OOM24h, 0, 5, 15)
 	count(DimStability, "service_crashes_24h", in.ServiceCrashes24h, 0, 10, 10)
 	count(DimStability, "segfaults_24h", in.Segfaults24h, 2, 20, 5)
@@ -180,23 +340,15 @@ func Score(in Input) Result {
 	opt(DimCapacity, "inode_used_pct", in.InodeUsedMax, 80, 97, 8, in.InodeMount)
 
 	// Security (20)
-	if in.OpenP1Security > 0 {
-		add(DimSecurity, "open_p1_security", float64(in.OpenP1Security), 8*float64(in.OpenP1Security), "")
-	}
-	if in.OpenP2Security > 0 {
-		add(DimSecurity, "open_p2_security", float64(in.OpenP2Security), 3*float64(in.OpenP2Security), "")
-	}
 	if in.RootPasswordLogin {
 		add(DimSecurity, "root_password_login", 1, 5, "")
 	}
-	switch in.OpenSSHAttack {
-	case 1:
-		add(DimSecurity, "open_ssh_attack_root", 1, 8, "")
-	case 2:
-		add(DimSecurity, "open_ssh_attack", 1, 5, "")
-	}
-	if in.OpenDBPublic > 0 {
-		add(DimSecurity, "open_db_public_access", float64(in.OpenDBPublic), 8, "")
+	if attack != nil {
+		if attack.Severity <= 1 {
+			addEv(DimSecurity, "open_ssh_attack_root", 1, weight(attack, 8), "", attack)
+		} else {
+			addEv(DimSecurity, "open_ssh_attack", 1, weight(attack, 5), "", attack)
+		}
 	}
 
 	// Hardware and kernel (5)
@@ -209,7 +361,7 @@ func Score(in Input) Result {
 	for _, it := range items {
 		perDim[it.dim] += it.deduct
 	}
-	res := Result{Algo: Algo, Deductions: []Deduction{}}
+	res := Result{Algo: Algo, Deductions: []Deduction{}, Accepted: accepted}
 	total := 0.0
 	for _, it := range items {
 		d := it.deduct
@@ -218,27 +370,23 @@ func Score(in Input) Result {
 		}
 		d = math.Round(d*10) / 10
 		total += d
-		res.Deductions = append(res.Deductions, Deduction{
-			Dim: it.dim, Item: it.name, Value: math.Round(it.value*10) / 10, Deduct: d, Subject: it.subject,
-		})
+		ded := Deduction{Dim: it.dim, Item: it.name, Value: math.Round(it.value*10) / 10, Deduct: d, Subject: it.subject}
+		if it.ev != nil {
+			ded.EventID, ded.State = it.ev.ID, it.ev.State
+		}
+		res.Deductions = append(res.Deductions, ded)
 	}
 	sort.SliceStable(res.Deductions, func(i, j int) bool { return res.Deductions[i].Deduct > res.Deductions[j].Deduct })
 
 	score := int(math.Round(100 - total))
 
-	// Hard caps (spec delta 8.3): the lowest that applies wins.
-	caps := []Cap{}
-	if in.OpenP0Intrusion > 0 {
-		caps = append(caps, Cap{"open_p0_intrusion", 20})
-	}
-	if in.OpenDiskFailure > 0 {
-		caps = append(caps, Cap{"open_disk_failure", 40})
-	}
+	// Hard caps (spec delta 8.3): the lowest that applies wins. Accepting
+	// items never lifts one.
 	if (in.DiskDaysToFull != nil && *in.DiskDaysToFull < 1) || (in.DiskUsedMax != nil && *in.DiskUsedMax >= 99) {
-		caps = append(caps, Cap{"disk_full_imminent", 40})
+		caps = append(caps, Cap{Item: "disk_full_imminent", Limit: 40})
 	}
 	if in.OOM1h > 0 && in.MemAvailNow != nil && *in.MemAvailNow < 5 {
-		caps = append(caps, Cap{"oom_memory_exhausted", 50})
+		caps = append(caps, Cap{Item: "oom_memory_exhausted", Limit: 50})
 	}
 	for i := range caps {
 		if score > caps[i].Limit && (res.Cap == nil || caps[i].Limit < res.Cap.Limit) {

@@ -9,7 +9,8 @@ type phrase struct{ zh, en string }
 
 // Phrases take the value (%[1]v, rounded) and the subject (%[2]s).
 var phrases = map[string]phrase{
-	"open_service_failed":   {"%[1]v 个服务处于失败状态", "%[1]v service(s) in a failed state"},
+	"open_service_failed":   {"%[2]s 处于失败状态", "%[2]s is in a failed state"},
+	"open_service_failed#":  {"%[1]v 个服务处于失败状态", "%[1]v service(s) in a failed state"},
 	"oom_24h":               {"24 小时内 OOM %[1]v 次", "%[1]v OOM kill(s) in 24 h"},
 	"service_crashes_24h":   {"24 小时内服务崩溃 %[1]v 次", "%[1]v service crash(es) in 24 h"},
 	"segfaults_24h":         {"24 小时内段错误 %[1]v 次", "%[1]v segfault(s) in 24 h"},
@@ -30,6 +31,7 @@ var phrases = map[string]phrase{
 	"temp_p95":              {"温度 P95 %[1]v℃", "temperature P95 %[1]v°C"},
 	"hung_task_24h":         {"24 小时内 hung_task %[1]v 次", "%[1]v hung task(s) in 24 h"},
 	"open_p0_intrusion":     {"存在未处理的入侵事件", "an intrusion event is open"},
+	"open_docker_api":       {"Docker API 正暴露在公网", "the Docker API is exposed to the internet"},
 	"open_disk_failure":     {"磁盘错误或文件系统只读", "disk errors or a read-only file system"},
 	"disk_full_imminent":    {"磁盘即将写满", "a disk is about to fill up"},
 	"oom_memory_exhausted":  {"刚发生 OOM 且内存仍不足", "OOM just happened and memory is still short"},
@@ -40,6 +42,9 @@ var phrases = map[string]phrase{
 // line in lang ("zh-CN" or "en").
 func Describe(item string, value float64, subject, lang string) string {
 	p, ok := phrases[item]
+	if q, ok2 := phrases[item+"#"]; ok2 && subject == "" {
+		p, ok = q, true // without a subject (results of earlier versions)
+	}
 	if !ok {
 		return item
 	}
