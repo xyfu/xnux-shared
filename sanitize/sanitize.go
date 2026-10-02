@@ -239,6 +239,14 @@ func (b *Barrier) seal(raw []byte) (SanitizedPayload, error) {
 func (b *Barrier) sealCopy(p *proto.Payload) (SanitizedPayload, error) {
 	st := Stats{}
 	b.walk(reflect.ValueOf(p).Elem(), kindNormal, st)
+	// Placeholders can be longer than what they replaced: cut back to the
+	// schema limits so the server never rejects the payload for a length.
+	for i := range p.Events {
+		p.Events[i].Clamp()
+	}
+	for i, u := range p.ServicesFailed {
+		p.ServicesFailed[i] = proto.Truncate(u, proto.MaxStringLen)
+	}
 
 	red := make(map[string]int, len(p.Redactions)+len(st))
 	for k, v := range p.Redactions {

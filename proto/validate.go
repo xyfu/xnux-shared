@@ -13,6 +13,7 @@ const (
 	MaxDisks             = 16
 	MaxTemps             = 16
 	MaxStringLen         = 512
+	MaxServicesFailed    = 256
 )
 
 var (
@@ -21,7 +22,10 @@ var (
 	reRuleName  = regexp.MustCompile(`^[a-z0-9_]+$`)
 )
 
-// EventTypes lists the agent event types of schema v1.
+// EventTypes lists the agent event types of schema v1 and the data fields
+// the server requires. The schema may require more of the agent: exe of
+// proc_reverse_shell is required there but not here, so that agents from
+// before the lifecycle release keep being accepted.
 var EventTypes = map[string][]string{
 	EventServiceFailed:        {"unit", "result", "restarting", "n_restarts"},
 	EventServiceStartFailed:   {"unit", "job_result"},
@@ -71,6 +75,59 @@ func invalid(field, format string, a ...any) error {
 // It is the server's hot-path counterpart of ingest.v1.schema.json. JSON
 // null and an absent field decode alike, so "metrics": null is accepted.
 func (p *Payload) Validate() error {
+	if err := p.ValidateHeader(); err != nil {
+		return err
+	}
+	for i := range p.Events {
+		if err := p.Events[i].validate(fmt.Sprintf("events[%d]", i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Codes of a dropped event.
+const (
+	DropUnknownType = "unknown_type" // the type is not registered
+	DropInvalid     = "invalid"      // a field is missing or out of range
+)
+
+// DroppedEvent names an event the server dropped and why.
+type DroppedEvent struct {
+	ID   string `json:"id"`
+	Code string `json:"code"`
+}
+
+// FilterEvents removes the events that fail validation and returns them,
+// so one bad event no longer costs the whole payload (decision L17). Call it
+// after ValidateHeader. A payload whose events were all dropped keeps a nil
+// slice.
+func (p *Payload) FilterEvents() []DroppedEvent {
+	var dropped []DroppedEvent
+	kept := p.Events[:0]
+	for i := range p.Events {
+		e := &p.Events[i]
+		if err := e.validate("event"); err != nil {
+			code := DropInvalid
+			if _, ok := EventTypes[e.Type]; !ok {
+				code = DropUnknownType
+			}
+			dropped = append(dropped, DroppedEvent{ID: e.ID, Code: code})
+			continue
+		}
+		kept = append(kept, *e)
+	}
+	clear(p.Events[len(kept):])
+	if len(kept) == 0 {
+		kept = nil
+	}
+	p.Events = kept
+	return dropped
+}
+
+// ValidateHeader applies the checks of Validate to everything but the
+// individual events.
+func (p *Payload) ValidateHeader() error {
 	if p.V != SchemaVersion {
 		return invalid("v", "unsupported schema version %d", p.V)
 	}
@@ -119,9 +176,12 @@ func (p *Payload) Validate() error {
 	if p.Events != nil && len(p.Events) == 0 {
 		return invalid("events", "must be omitted rather than empty")
 	}
-	for i := range p.Events {
-		if err := p.Events[i].validate(fmt.Sprintf("events[%d]", i)); err != nil {
-			return err
+	if len(p.ServicesFailed) > MaxServicesFailed {
+		return invalid("services_failed", "at most %d units", MaxServicesFailed)
+	}
+	for _, u := range p.ServicesFailed {
+		if u == "" || len(u) > MaxStringLen {
+			return invalid("services_failed", "unit name length must be 1-%d", MaxStringLen)
 		}
 	}
 	if s := p.SecuritySummary; s != nil {
@@ -183,7 +243,7 @@ func (e *Event) validate(f string) error {
 	switch {
 	case !reULID.MatchString(e.ID):
 		return invalid(f+".id", "must be a ULID")
-	case !known:
+	case !known || Registry[e.Type].Source != SourceAgent:
 		return invalid(f+".type", "unknown event type %q", e.Type)
 	case !severities[e.Severity]:
 		return invalid(f+".severity", "must be P0-P3")

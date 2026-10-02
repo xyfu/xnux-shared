@@ -1,0 +1,10 @@
+{
+  "v": 1, "seq": 9, "sent_at": 1790000120, "agent_version": "1.0.0", "machine_fp": "9c1e4b7a0d2f6e38",
+  "services_failed": ["nginx.service", "worker@2.service"],
+  "events": [
+    { "id": "01J8ZQ5V3W7X9Y2Z4A6B8C0D1E", "ts": 1790000100, "type": "proc_reverse_shell", "severity": "P0", "count": 1,
+      "key": "/usr/bin/bash",
+      "data": { "pid": 4242, "comm": "bash", "exe": "/usr/bin/bash", "cmdline": "bash -i", "uid": 33, "ppid_comm": "php-fpm", "remote": "203.0.113.x:4444" } }
+  ],
+  "redactions": { "ipv4": 1 }
+}

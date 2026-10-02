@@ -158,7 +158,8 @@ func TestRedactionMarkers(t *testing.T) {
 }
 
 // Validate is the server's hot-path check; it must agree with the schema on
-// every fixture, except that JSON null decodes like an absent field.
+// every fixture, except that JSON null decodes like an absent field and that
+// the server still accepts proc_reverse_shell without exe from older agents.
 func TestValidateAgreesWithSchema(t *testing.T) {
 	for name, raw := range fixtures(t, "valid") {
 		var p Payload
@@ -175,9 +176,9 @@ func TestValidateAgreesWithSchema(t *testing.T) {
 			continue // rejected at decode time
 		}
 		err := p.Validate()
-		if name == "null_array.json" {
+		if name == "null_array.json" || name == "reverse_shell_no_exe.json" {
 			if err != nil {
-				t.Errorf("%s: null must be treated as absent: %v", name, err)
+				t.Errorf("%s: the server must accept it: %v", name, err)
 			}
 			continue
 		}

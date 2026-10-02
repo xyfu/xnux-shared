@@ -26,6 +26,11 @@
     },
     "diag": { "$ref": "#/$defs/diag" },
     "security_summary": { "$ref": "#/$defs/security_summary" },
+    "services_failed": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+    },
     "redactions": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z0-9_]+$" },
@@ -397,10 +402,11 @@
     },
     "data_proc_reverse_shell": {
       "type": "object",
-      "required": ["pid", "comm", "remote"],
+      "required": ["pid", "comm", "exe", "remote"],
       "properties": {
         "pid": { "type": "integer", "minimum": 1 },
         "comm": { "$ref": "#/$defs/str512" },
+        "exe": { "$ref": "#/$defs/str512" },
         "cmdline": { "type": "string", "maxLength": 256 },
         "uid": { "type": "integer", "minimum": 0 },
         "ppid_comm": { "$ref": "#/$defs/str512" },

@@ -97,7 +97,12 @@ type Payload struct {
 	// SecuritySummary is sent once an hour, whatever the risk scan found
 	// (spec v1.1 delta 10.4).
 	SecuritySummary *SecuritySummary `json:"security_summary,omitempty"`
-	Redactions      map[string]int   `json:"redactions"`
+	// ServicesFailed lists the .service units that are failed or in an
+	// auto-restart loop right now (decision L19). It is sent at start-up,
+	// on a D-Bus reconnect, on every change and once an hour; nil (absent)
+	// otherwise. An empty, non-nil list means no unit is failed.
+	ServicesFailed []string       `json:"services_failed,omitzero"`
+	Redactions     map[string]int `json:"redactions"`
 }
 
 // SecuritySummary counts the failed SSH logins of one hour. It carries no
@@ -254,6 +259,9 @@ type IngestResponse struct {
 	AckSeq     uint64 `json:"ack_seq"`
 	ServerTime int64  `json:"server_time"`
 	Notice     string `json:"notice,omitempty"`
+	// DroppedEvents lists the events the server dropped while accepting
+	// the rest of the payload (decision L17). The agent only logs them.
+	DroppedEvents []DroppedEvent `json:"dropped_events,omitempty"`
 }
 
 // Notices the server may attach to IngestResponse.

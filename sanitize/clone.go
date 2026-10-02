@@ -52,6 +52,9 @@ func clonePayload(p *proto.Payload) (*proto.Payload, error) {
 		d.CollectorErrors = maps.Clone(p.Diag.CollectorErrors)
 		cp.Diag = &d
 	}
+	if p.ServicesFailed != nil {
+		cp.ServicesFailed = append(make([]string, 0, len(p.ServicesFailed)), p.ServicesFailed...)
+	}
 	cp.Redactions = maps.Clone(p.Redactions)
 	return &cp, nil
 }

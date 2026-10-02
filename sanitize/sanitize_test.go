@@ -316,3 +316,32 @@ func FuzzString(f *testing.F) {
 		}
 	})
 }
+
+// A placeholder longer than what it replaced must not push a key past the
+// schema limit, and an empty services_failed list survives sealing.
+func TestSealClampsAndKeepsServices(t *testing.T) {
+	b := newBarrier(t)
+	key := strings.Repeat("a", 500) + " token=1"
+	p := &proto.Payload{V: 1, Seq: 6, SentAt: 1, AgentVersion: "1", MachineFP: "0123456789abcdef",
+		Redactions: map[string]int{}, ServicesFailed: []string{},
+		Events: []proto.Event{{ID: "01JABCD7XK4R2N5Q8V3W6Y9Z0E", Type: "sudo_sensitive", Severity: "P1", Count: 1, Key: key,
+			Data: map[string]any{"by_user": "a", "as_user": "root", "command": key}}},
+	}
+	sp, err := b.Seal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out proto.Payload
+	if err := json.Unmarshal(sp.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if err := out.Validate(); err != nil {
+		t.Fatalf("sealed payload invalid: %v", err)
+	}
+	if !strings.HasSuffix(out.Events[0].Key, proto.Ellipsis) || out.ServicesFailed == nil {
+		t.Fatalf("key %q, services_failed %#v", out.Events[0].Key, out.ServicesFailed)
+	}
+	if p.Events[0].Key != key {
+		t.Fatal("Seal modified its input")
+	}
+}
