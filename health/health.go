@@ -63,6 +63,9 @@ type Event struct {
 	// Count24h and Count1h are its occurrences included in the 24-hour and
 	// 1-hour counts of Input: resolving it takes them out.
 	Count24h, Count1h int
+	// StillFailing: the agent still reports it failing (a unit in the
+	// failed list), so resolving it by hand leaves it awaiting recovery.
+	StillFailing bool
 }
 
 // Accept is an item the user accepted (a suppression, delta 13.6): it is
@@ -223,12 +226,18 @@ func Score(in Input) Result {
 	return res
 }
 
-// without is in as if event i were resolved by the user: gone, with its
-// occurrences out of the counts.
+// without is in as if event i were resolved by the user: gone, or awaiting
+// recovery while still failing, with its occurrences out of the counts.
+// The gain is then exactly what the user's action changes (L23).
 func without(in Input, i int) Input {
 	e := in.Events[i]
 	out := in
 	out.Events = append(append([]Event(nil), in.Events[:i]...), in.Events[i+1:]...)
+	if e.StillFailing && e.State != StateAwaitingRecovery {
+		a := e
+		a.State, a.Count24h, a.Count1h = StateAwaitingRecovery, 0, 0
+		out.Events = append(out.Events, a)
+	}
 	switch countOf[e.Type] {
 	case "oom_24h":
 		out.OOM24h, out.OOM1h = max(0, out.OOM24h-e.Count24h), max(0, out.OOM1h-e.Count1h)

@@ -269,6 +269,12 @@ func TestInterventions(t *testing.T) {
 	if r := Score(in); r.Score != 95 || r.Deductions[0].State != StateAwaitingRecovery {
 		t.Fatalf("awaiting: %+v", r)
 	}
+	// Still failing: resolving it leaves half, so the gain says so (L23).
+	in = Input{Events: []Event{{ID: "e1", Type: "service_failed", Severity: 1, State: StateOpen, Subject: "nginx.service",
+		Count24h: 3, StillFailing: true}}, ServiceCrashes24h: 3}
+	if r := Score(in); r.Score != 87 || r.Deductions[0].Gain != 8 {
+		t.Fatalf("still failing: %+v", r)
+	}
 	// A recurrence within 7 days deducts 1.5 times.
 	in = Input{Events: []Event{{ID: "e2", Type: "sudo_sensitive", Severity: 1, State: StateOpen, Recurrent: true}}}
 	if r := Score(in); r.Score != 88 {
