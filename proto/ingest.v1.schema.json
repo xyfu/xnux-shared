@@ -237,7 +237,7 @@
         "unit": { "$ref": "#/$defs/str512" },
         "result": {
           "type": "string",
-          "enum": ["exit-code", "signal", "core-dump", "timeout", "oom-kill", "watchdog", "start-limit-hit"]
+          "enum": ["exit-code", "signal", "core-dump", "timeout", "oom-kill", "watchdog", "start-limit-hit", "protocol", "resources", "unknown"]
         },
         "exit_code": { "type": "integer" },
         "signal": { "type": "string", "pattern": "^SIG[A-Z0-9+-]+$" },
