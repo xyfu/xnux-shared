@@ -214,12 +214,37 @@ func TestDescribe(t *testing.T) {
 	if got := Describe("disk_days_to_full", 3.1, "/data", "zh-CN"); got != "/data 约 3.1 天后写满" {
 		t.Errorf("zh: %q", got)
 	}
-	if got := Describe("cpu_p95", 91, "", "en"); got != "CPU P95 91%" {
+	if got := Describe("cpu_p95", 91, "", "en"); got != "CPU usage 91% (1-hour P95)" {
 		t.Errorf("en: %q", got)
+	}
+	// Other languages fall back to English, as the service's do.
+	if got := Describe("root_password_login", 0, "", "fr"); got != "root logged in with a password in the last 24 h" {
+		t.Errorf("fr: %q", got)
 	}
 	for item := range phrases {
 		if s := Describe(item, 1, "/", "en"); s == item {
 			t.Errorf("%s has no text", item)
+		}
+	}
+}
+
+// Accepted items are named without a value (not "CPU usage 0%").
+func TestName(t *testing.T) {
+	for _, c := range []struct{ item, subject, lang, want string }{
+		{"cpu_p95", "", "zh-Hans", "CPU 使用率"},
+		{"disk_used_pct", "/data", "en", "/data disk usage"},
+		{"disk_used_pct", "", "zh-Hans", "磁盘用量"},
+		{"mem_avail_p5", "", "en", "Available memory"},
+	} {
+		if got := Name(c.item, c.subject, c.lang); got != c.want {
+			t.Errorf("%s %q %s: %q", c.item, c.subject, c.lang, got)
+		}
+	}
+	for item := range names {
+		for _, lang := range []string{"zh-Hans", "en"} {
+			if got := Name(item, "/data", lang); strings.Contains(got, "%!") || strings.ContainsAny(strings.ReplaceAll(got, "24", ""), "0123456789") {
+				t.Errorf("%s (%s): %q", item, lang, got)
+			}
 		}
 	}
 }
