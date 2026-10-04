@@ -160,8 +160,11 @@ func TestHardCaps(t *testing.T) {
 		in    Input
 		limit int
 	}{
-		{"open_p0_intrusion", Input{Events: evs("ssh_breach", 0, 1)}, 20},
-		{"open_docker_api", Input{Events: evs("docker_api_access", 0, 1)}, 20},
+		{"open_p0", Input{Events: evs("ssh_breach", 0, 1)}, 20},
+		{"open_p0", Input{Events: evs("docker_api_access", 0, 1)}, 20},
+		{"open_p0", Input{Events: evs("oom_kill", 0, 1)}, 20},       // escalated from P1: any type
+		{"open_p0", Input{Events: evs("proc_tmp_exec", 0, 1)}, 20},  // a security type at P0
+		{"open_p0", Input{Events: evs("service_failed", 0, 1)}, 20}, // and its own item still deducts
 		{"open_disk_failure", Input{Events: evs("disk_error", 1, 1)}, 40},
 		{"disk_full_imminent", Input{DiskDaysToFull: f(0.5), DiskDaysMount: "/"}, 40},
 		{"disk_full_imminent", Input{DiskUsedMax: f(99)}, 40},
@@ -173,12 +176,24 @@ func TestHardCaps(t *testing.T) {
 			t.Errorf("%s: %+v", c.name, r)
 		}
 	}
+	// A P0 resolved by hand and awaiting recovery: half its item, no cap.
+	waiting := evs("service_failed", 0, 1)
+	waiting[0].State = StateAwaitingRecovery
+	if r := Score(Input{Events: waiting}); r.Cap != nil || r.Score != 95 {
+		t.Errorf("awaiting P0: %+v", r)
+	}
+	// In progress (acknowledged) still caps; the cap names the event.
+	busy := evs("docker_api_access", 0, 1)
+	busy[0].State = StateInProgress
+	if r := Score(Input{Events: busy}); r.Cap == nil || r.Cap.EventID != busy[0].ID || r.Cap.State != StateInProgress || r.Score != 20 {
+		t.Errorf("in-progress P0: %+v", r)
+	}
 	// OOM with memory back above 5% does not cap.
 	if r := Score(Input{OOM1h: 1, MemAvailNow: f(30)}); r.Cap != nil {
 		t.Errorf("oom with memory back: %+v", r)
 	}
 	// Several: the lowest wins.
-	if r := Score(Input{Events: append(evs("proc_reverse_shell", 0, 1), evs("fs_readonly", 1, 1)...)}); r.Score != 20 || r.Cap.Item != "open_p0_intrusion" {
+	if r := Score(Input{Events: append(evs("proc_reverse_shell", 0, 1), evs("fs_readonly", 1, 1)...)}); r.Score != 20 || r.Cap.Item != "open_p0" {
 		t.Errorf("lowest cap: %+v", r)
 	}
 	// A cap above the score leaves it alone.
@@ -229,6 +244,25 @@ func TestDescribe(t *testing.T) {
 }
 
 // Accepted items are named without a value (not "CPU usage 0%").
+// The root partition reads as such (specs/06); other mounts by path.
+func TestMountNames(t *testing.T) {
+	for _, c := range []struct{ got, want string }{
+		{Describe("disk_days_to_full", 3.2, "/", "zh-Hans"), "根分区约 3.2 天后写满"},
+		{Describe("disk_used_pct", 96, "/", "zh-Hans"), "根分区已用 96%"},
+		{Describe("inode_used_pct", 90, "/", "zh-Hans"), "根分区 inode 已用 90%"},
+		{Describe("disk_days_to_full", 3.2, "/", "en"), "Root (/) will be full in about 3.2 days"},
+		{Describe("disk_used_pct", 96, "/data", "zh-Hans"), "/data 已用 96%"},
+		{Describe("disk_used_pct", 96, "", "en"), "Root (/) 96% used"},
+		{Name("disk_used_pct", "/", "zh-Hans"), "根分区磁盘用量"},
+		{Name("inode_used_pct", "/", "en"), "Root (/) inode usage"},
+		{MountName("/srv", "zh-Hans"), "/srv"},
+	} {
+		if c.got != c.want {
+			t.Errorf("%q, want %q", c.got, c.want)
+		}
+	}
+}
+
 func TestName(t *testing.T) {
 	for _, c := range []struct{ item, subject, lang, want string }{
 		{"cpu_p95", "", "zh-Hans", "CPU 使用率"},

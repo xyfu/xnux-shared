@@ -32,8 +32,9 @@ var phrases = map[string]phrase{
 	"open_db_public_access": {"数据库正被公网访问", "A database is being accessed from the internet"},
 	"temp_p95":              {"温度 %[1]v°C（1 小时 P95）", "Temperature %[1]v°C (1-hour P95)"},
 	"hung_task_24h":         {"24 小时内进程阻塞 %[1]v 次", "Hung tasks in 24 h: %[1]v"},
-	"open_p0_intrusion":     {"有未结束的入侵事件", "An intrusion event is unresolved"},
-	"open_docker_api":       {"Docker API 正暴露在公网", "The Docker API is exposed to the internet"},
+	"open_p0":               {"有未结束的 P0 事件", "A P0 event is unresolved"},
+	"open_p0_intrusion":     {"有未结束的入侵事件", "An intrusion event is unresolved"},                  // before open_p0: cached scores
+	"open_docker_api":       {"Docker API 正暴露在公网", "The Docker API is exposed to the internet"}, // before open_p0: cached scores
 	"open_disk_failure":     {"磁盘错误或文件系统只读", "Disk errors or a read-only file system"},
 	"disk_full_imminent":    {"磁盘即将写满", "A disk is about to fill up"},
 	"oom_memory_exhausted":  {"刚发生内存耗尽且内存仍不足", "Memory just ran out and is still short"},
@@ -74,6 +75,9 @@ func Name(item, subject, lang string) string {
 	if subject == "" {
 		return strings.TrimSpace(strings.Replace(f, "%[1]s", "", 1))
 	}
+	if mountItems[item] {
+		return withMount(f, MountName(subject, lang))
+	}
 	return fmt.Sprintf(f, subject)
 }
 
@@ -84,6 +88,28 @@ func pick(p phrase, lang string) string {
 		return p.zh
 	}
 	return p.en
+}
+
+// mountItems are the items whose subject is a mount point.
+var mountItems = map[string]bool{"disk_days_to_full": true, "disk_used_pct": true, "inode_used_pct": true}
+
+// MountName is how a mount point reads in text (specs/06): "/" is the
+// root partition, "根分区" or "Root (/)"; any other mount is its path.
+func MountName(mount, lang string) string {
+	if mount != "/" {
+		return mount
+	}
+	return pick(phrase{"根分区", "Root (/)"}, lang)
+}
+
+// withMount puts a mount's name in f where it starts the line: Chinese
+// keeps no space between "根分区" and the Chinese that follows.
+func withMount(f string, args ...any) string {
+	out := fmt.Sprintf(f, args...)
+	if rest, ok := strings.CutPrefix(out, "根分区 "); ok && rest != "" && rest[0] >= 0x80 {
+		return "根分区" + rest
+	}
+	return out
 }
 
 // Describe renders an item (a deduction, a cap or a suggestion) as one
@@ -102,6 +128,9 @@ func Describe(item string, value float64, subject, lang string) string {
 	}
 	if subject == "" {
 		subject = "/"
+	}
+	if mountItems[item] {
+		return withMount(f, trim(value), MountName(subject, lang))
 	}
 	return fmt.Sprintf(f, trim(value), subject)
 }

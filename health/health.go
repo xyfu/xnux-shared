@@ -187,9 +187,8 @@ var (
 	serviceTypes  = map[string]bool{"service_failed": true, "service_start_failed": true}
 	securityTypes = map[string]bool{"sudo_sensitive": true, "sudo_auth_fail": true, "su_root": true, "user_created": true,
 		"proc_fileless": true, "proc_deleted_exe": true, "proc_stale_binary": true, "proc_tmp_exec": true}
-	attackTypes    = map[string]bool{"ssh_bruteforce": true, "ssh_spray": true}
-	intrusionTypes = map[string]bool{"ssh_breach": true, "proc_reverse_shell": true}
-	diskTypes      = map[string]bool{"disk_error": true, "fs_readonly": true}
+	attackTypes = map[string]bool{"ssh_bruteforce": true, "ssh_spray": true}
+	diskTypes   = map[string]bool{"disk_error": true, "fs_readonly": true}
 	// countOf names the 24-hour count an event type's occurrences are in.
 	countOf = map[string]string{"oom_kill": "oom_24h", "service_failed": "service_crashes_24h",
 		"proc_segfault": "segfaults_24h", "hung_task": "hung_task_24h"}
@@ -309,6 +308,12 @@ func score(in Input) Result {
 	}
 	for i := range in.Events {
 		e := &in.Events[i]
+		// Any P0 in progress caps the score, whatever its type (delta 8.3);
+		// one resolved by hand and awaiting recovery deducts half instead
+		// (L24). Suppressed and muted P0s count: P0 cannot be either.
+		if e.Severity == 0 && e.State != StateAwaitingRecovery {
+			capFor("open_p0", 20, e)
+		}
 		switch {
 		case serviceTypes[e.Type]:
 			addEv(DimStability, "open_service_failed", 1, weight(e, 10), e.Subject, e)
@@ -322,10 +327,6 @@ func score(in Input) Result {
 			}
 		case e.Type == "db_public_access":
 			addEv(DimSecurity, "open_db_public_access", 1, weight(e, 8), e.Subject, e)
-		case intrusionTypes[e.Type]:
-			capFor("open_p0_intrusion", 20, e)
-		case e.Type == "docker_api_access":
-			capFor("open_docker_api", 20, e)
 		case diskTypes[e.Type]:
 			capFor("open_disk_failure", 40, e)
 		}
