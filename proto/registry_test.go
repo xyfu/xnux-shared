@@ -28,7 +28,7 @@ func TestRegistry(t *testing.T) {
 	categories := map[string]bool{CategoryState: true, CategoryRisk: true, CategoryTransient: true,
 		CategoryAction: true, CategoryFinding: true, CategoryInfo: true, CategorySignal: true}
 	ends := map[string]bool{EndRecovery: true, EndMetric: true, EndQuiet24h: true, EndQuiet48h: true,
-		EndManual: true, EndVersion: true}
+		EndManual: true, EndVersion: true, EndQuiet72h: true, EndQuiet7d: true, EndMembers: true}
 
 	for typ := range EventTypes {
 		if c, ok := Registry[typ]; !ok || c.Source != SourceAgent {
@@ -59,7 +59,9 @@ func TestRegistry(t *testing.T) {
 					t.Errorf("%s: object %q is for server types", typ, f)
 				}
 			default:
-				if c.Source != SourceAgent || !dataProps[f] {
+				// Server types may name a field of the data they make,
+				// as long as agents use the same name for the same thing.
+				if !dataProps[f] {
 					t.Errorf("%s: object field %q is not a data field", typ, f)
 				}
 			}

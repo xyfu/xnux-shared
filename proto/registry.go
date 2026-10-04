@@ -38,6 +38,9 @@ const (
 	EndQuiet48h = "quiet_48h" // 48 hours without a new occurrence
 	EndManual   = "manual"    // only a person ends it
 	EndVersion  = "version"   // the agent reports the latest version
+	EndQuiet72h = "quiet_72h" // 72 hours without a new occurrence (ssh_exposure)
+	EndQuiet7d  = "quiet_7d"  // 7 days without a new occurrence (service_unstable)
+	EndMembers  = "members"   // when all its members ended (restart_pending)
 )
 
 // Where an event type comes from.
@@ -105,6 +108,11 @@ var Registry = map[string]EventClass{
 	EventSuRoot:          {CategoryInfo, SeverityP3, "by_user+day", EndQuiet48h, SourceAgent},
 
 	EventServiceRecovered: {CategorySignal, "", "unit", "", SourceAgent},
+
+	// To-dos the server makes of records (specs/07 R2–R4).
+	EventSSHExposure:     {CategoryRisk, SeverityP2, ObjectServer, EndQuiet72h, SourceServer},
+	EventRestartPending:  {CategoryRisk, SeverityP3, ObjectServer, EndMembers, SourceServer},
+	EventServiceUnstable: {CategoryTransient, SeverityP2, "unit", EndQuiet7d, SourceServer},
 }
 
 // ClientCategory is the category shown to clients: both kinds of D are "D".
