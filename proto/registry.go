@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -153,7 +154,11 @@ func ObjectOf(typ string, data map[string]any, day string) string {
 		case ObjectDay:
 			vals = append(vals, day)
 		default:
-			vals = append(vals, objectField(f, data))
+			v := objectField(f, data)
+			if f == "exe" && tmpObjectTypes[typ] {
+				v = TmpPath(v)
+			}
+			vals = append(vals, v)
 		}
 	}
 	o := strings.Join(vals, "\x1f")
@@ -162,6 +167,53 @@ func ObjectOf(typ string, data map[string]any, day string) string {
 		o = hex.EncodeToString(sum[:])[:objectHashHexChars]
 	}
 	return o
+}
+
+// tmpObjectTypes are the process findings whose object is a path that may
+// lie in a temporary directory (xnux-pm thread 0020).
+var tmpObjectTypes = map[string]bool{EventProcTmpExec: true, EventProcFileless: true, EventProcDeletedExe: true}
+
+var (
+	tmpRoots   = []string{"/tmp/", "/var/tmp/", "/dev/shm/"}
+	digitRun   = regexp.MustCompile(`[0-9]{3,}`)
+	hexRun     = regexp.MustCompile(`^[0-9a-fA-F]{8,}$`)
+	tokenSplit = regexp.MustCompile(`[^-_.]+`)
+	mktempName = regexp.MustCompile(`^(tmp\.)[A-Za-z0-9]{6,}$`)
+)
+
+// TmpPath makes one program's path the same from run to run: under /tmp,
+// /var/tmp and /dev/shm, the parts of directory names that look random (3
+// digits or more, 8 hex digits or more, mktemp's tmp.XXXXXXXX) become "*",
+// so /tmp/go-build3125544911/b001/api.test is /tmp/go-build*/b*/api.test.
+// The file name itself is kept: another program stays another event.
+// Other paths are returned as they are.
+func TmpPath(p string) string {
+	root := ""
+	for _, r := range tmpRoots {
+		if strings.HasPrefix(p, r) {
+			root = r
+			break
+		}
+	}
+	if root == "" {
+		return p
+	}
+	segs := strings.Split(p[len(root):], "/")
+	for i := 0; i < len(segs)-1; i++ { // directories only
+		if m := mktempName.FindStringSubmatch(segs[i]); m != nil {
+			segs[i] = m[1] + "*"
+			continue
+		}
+		// Piece by piece between - _ and .: a piece of hex digits only is
+		// replaced whole; elsewhere runs of 3 digits or more.
+		segs[i] = tokenSplit.ReplaceAllStringFunc(segs[i], func(tok string) string {
+			if hexRun.MatchString(tok) && strings.ContainsAny(tok, "0123456789") {
+				return "*"
+			}
+			return digitRun.ReplaceAllString(tok, "*")
+		})
+	}
+	return root + strings.Join(segs, "/")
 }
 
 func objectField(f string, data map[string]any) string {

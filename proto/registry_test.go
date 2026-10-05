@@ -69,6 +69,35 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
+// Programs run from random temporary directories (go test, mktemp) are one
+// object from run to run; another name or place is another (thread 0020).
+func TestTmpPath(t *testing.T) {
+	for in, want := range map[string]string{
+		"/tmp/go-build3125544911/b001/api.test":       "/tmp/go-build*/b*/api.test",
+		"/tmp/go-build88442211/b123/pulse.test":       "/tmp/go-build*/b*/pulse.test",
+		"/tmp/tmp.Xk3fP9aQ/payload":                   "/tmp/tmp.*/payload",
+		"/var/tmp/systemd-private-0123abcd9876ef/run": "/var/tmp/systemd-private-*/run",
+		"/dev/shm/.x/miner":                           "/dev/shm/.x/miner",
+		"/tmp/x8f3k2":                                 "/tmp/x8f3k2", // the file name stays
+		"/tmp/deadbeef-cafe/x":                        "/tmp/deadbeef-cafe/x",
+		"/usr/sbin/nginx":                             "/usr/sbin/nginx",
+		"/opt/app1234/bin/x":                          "/opt/app1234/bin/x", // not a temporary directory
+	} {
+		if got := TmpPath(in); got != want {
+			t.Errorf("TmpPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+	a := ObjectOf(EventProcTmpExec, map[string]any{"exe": "/tmp/go-build1/b001/api.test", "comm": "api.test"}, "")
+	b := ObjectOf(EventProcTmpExec, map[string]any{"exe": "/tmp/go-build2222/b001/api.test", "comm": "api.test"}, "")
+	c := ObjectOf(EventProcTmpExec, map[string]any{"exe": "/tmp/go-build3333/b001/api.test", "comm": "api.test"}, "")
+	if b != c || b != "/tmp/go-build*/b*/api.test" || a == b { // 1 digit is not random
+		t.Errorf("objects: %q %q %q", a, b, c)
+	}
+	if o := ObjectOf(EventProcReverseShell, map[string]any{"exe": "/tmp/go-build3333/sh"}, ""); o != "/tmp/go-build3333/sh" {
+		t.Errorf("reverse shell object normalized: %q", o)
+	}
+}
+
 func TestObjectOf(t *testing.T) {
 	long := strings.Repeat("a", 300)
 	cases := []struct {
