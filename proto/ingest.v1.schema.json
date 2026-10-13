@@ -397,6 +397,8 @@
         "exe": { "$ref": "#/$defs/str512" },
         "cmdline": { "type": "string", "maxLength": 256 },
         "uid": { "type": "integer", "minimum": 0 },
+        "euid": { "type": "integer", "minimum": 0 },
+        "user": { "$ref": "#/$defs/str512" },
         "ppid_comm": { "$ref": "#/$defs/str512" }
       }
     },
@@ -409,6 +411,8 @@
         "exe": { "$ref": "#/$defs/str512" },
         "cmdline": { "type": "string", "maxLength": 256 },
         "uid": { "type": "integer", "minimum": 0 },
+        "euid": { "type": "integer", "minimum": 0 },
+        "user": { "$ref": "#/$defs/str512" },
         "ppid_comm": { "$ref": "#/$defs/str512" },
         "remote": { "$ref": "#/$defs/str512" }
       }
