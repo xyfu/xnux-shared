@@ -179,6 +179,30 @@ func TestHideHostname(t *testing.T) {
 	}
 }
 
+// Templated systemd units look like mailboxes but are not (thread 0026).
+func TestEmailNotUnits(t *testing.T) {
+	b, err := New(Options{MaskEmail: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for in, want := range map[string]string{
+		"xxx@8812.service failed":                "xxx@8812.service failed",
+		"getty@tty1.service started":             "getty@tty1.service started",
+		"openvpn@server.socket, user@1000.slice": "openvpn@server.socket, user@1000.slice",
+		"systemd-fsck@dev-sda1.DEVICE":           "systemd-fsck@dev-sda1.DEVICE",
+		"mail alice@example.com":                 "mail a***@example.com",
+		"bob@ops.service.example.com":            "b***@ops.service.example.com",
+	} {
+		if got := b.String(in); got != want {
+			t.Errorf("%q: got %q, want %q", in, got, want)
+		}
+	}
+	st := Stats{}
+	if got := b.apply("getty@tty1.service", kindNormal, st); got != "getty@tty1.service" || st[RuleEmail] != 0 {
+		t.Errorf("a unit counted as a redaction: %q %v", got, st)
+	}
+}
+
 func TestEmailOptional(t *testing.T) {
 	b, _ := New(Options{MaskEmail: false})
 	if got := b.String("mail ops@example.com"); got != "mail ops@example.com" {

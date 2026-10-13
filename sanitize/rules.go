@@ -146,7 +146,7 @@ func builtinRules(maskEmail bool) []rule {
 			find: regexFind(re(`(\s-p)(\S{4,})`))},
 	}
 	if maskEmail {
-		rules = append(rules, rule{name: RuleEmail, pre: has("@"), fn: template("${1}***@${2}"),
+		rules = append(rules, rule{name: RuleEmail, pre: has("@"), fn: notUnit(template("${1}***@${2}"), 2),
 			find: regexFind(re(`\b([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b`))})
 	}
 	return append(rules,
@@ -155,6 +155,27 @@ func builtinRules(maskEmail bool) []rule {
 		rule{name: RuleIPv6, pre: func(s, _ string) bool { return strings.Count(s, ":") >= 2 },
 			find: findIPv6, fn: maskIPv6, network: true},
 	)
+}
+
+// unitTypes are systemd's unit suffixes: "getty@tty1.service" or
+// "app@8812.service" name a templated unit, not a mailbox (thread 0026).
+var unitTypes = []string{".service", ".socket", ".timer", ".mount", ".automount", ".scope", ".slice", ".target",
+	".path", ".device", ".swap"}
+
+// notUnit leaves a match alone when its domain (submatch n) ends in a
+// systemd unit type.
+func notUnit(fn func([]string) string, n int) func([]string) string {
+	return func(sub []string) string {
+		if n < len(sub) {
+			d := strings.ToLower(sub[n])
+			for _, u := range unitTypes {
+				if strings.HasSuffix(d, u) {
+					return sub[0]
+				}
+			}
+		}
+		return fn(sub)
+	}
 }
 
 func hasSecretStem(_, lower string) bool {
