@@ -1,4 +1,4 @@
-Failed password [REDACTED:secret] root from 8.8.8.x port 22 ssh2
+Failed password for root from 8.8.8.x port 22 ssh2
 ---
 client 1.2.3.x connected
 ---

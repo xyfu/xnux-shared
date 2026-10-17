@@ -147,7 +147,9 @@ func TestSealDeepAndTrusted(t *testing.T) {
 	}
 	var got proto.Payload
 	_ = json.Unmarshal(sp.Bytes(), &got)
-	want := map[string]int{"ipv4": 2, "kv_secret": 3, "cli_secret": 1}
+	// kv_secret: token=abc and password=x; "Failed password for root" is a
+	// user name, not a password, since thread 0035.
+	want := map[string]int{"ipv4": 2, "kv_secret": 2, "cli_secret": 1}
 	for k, v := range want {
 		if got.Redactions[k] != v {
 			t.Errorf("redactions = %v, want %v", got.Redactions, want)

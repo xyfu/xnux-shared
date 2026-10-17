@@ -328,16 +328,88 @@ func matchKV(s, lower string, at int) []int {
 			g++
 		}
 		if e := matchKVValue(s, g); e > g {
+			if s[f] == ':' {
+				if bs, be := blockScalar(s, at, g, e); be > bs {
+					return []int{at, be, at, q, q, bs, bs, be}
+				}
+			}
 			return []int{at, e, at, q, q, g, g, e}
 		}
 	}
 	// Second alternative: \s+
 	if f > q {
 		if e := matchKVValue(s, f); e > f {
+			switch word := strings.ToLower(s[f:e]); {
+			case word == "for" && name == "password":
+				// "Failed password for root", "[sudo] password for deploy:":
+				// a user name follows, not the password (thread 0035).
+				return nil
+			case word == "is" || word == "was":
+				// "the password is hunter2": the value is the next word.
+				h := e
+				for h < len(s) && (s[h] == ' ' || s[h] == '\t') {
+					h++
+				}
+				if e2 := matchKVValue(s, h); h > e && e2 > h {
+					return []int{at, e2, at, q, q, h, h, e2}
+				}
+				return nil
+			}
 			return []int{at, e, at, q, q, f, f, e}
 		}
 	}
 	return nil
+}
+
+// blockScalar finds the value of a YAML block scalar ("password: |" or
+// ">-" and the lines indented under it), whose indicator g..e would
+// otherwise be taken for the value and the secret below it left out. It
+// returns the span from the first content line to the last, or 0, 0.
+func blockScalar(s string, key, g, e int) (int, int) {
+	if c := s[g]; c != '|' && c != '>' || e-g > 3 || strings.Trim(s[g+1:e], "+-0123456789") != "" {
+		return 0, 0
+	}
+	// The rest of the indicator's line is blank or a comment.
+	i := e
+	for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+		i++
+	}
+	if i < len(s) && s[i] == '#' {
+		for i < len(s) && s[i] != '\n' {
+			i++
+		}
+	}
+	if i >= len(s) || s[i] != '\n' {
+		return 0, 0
+	}
+	// The key's column; content lines are indented further.
+	keyCol := key - (strings.LastIndexByte(s[:key], '\n') + 1)
+	start, end := 0, 0
+	for line := i + 1; line < len(s); {
+		next := strings.IndexByte(s[line:], '\n')
+		stop := len(s)
+		if next >= 0 {
+			stop = line + next
+		}
+		ind := line
+		for ind < stop && (s[ind] == ' ' || s[ind] == '\t') {
+			ind++
+		}
+		if ind < stop { // not a blank line
+			if ind-line <= keyCol {
+				break
+			}
+			if start == 0 {
+				start = ind
+			}
+			end = stop
+		}
+		if next < 0 {
+			break
+		}
+		line = stop + 1
+	}
+	return start, end
 }
 
 // validPrefix reports whether p matches ([a-z0-9]+[_.-])*.
@@ -592,8 +664,13 @@ func findPasswordPhrase(s, lower string) [][]int {
 		if k >= len(s) || s[k] != ':' || k-end > 80 {
 			continue
 		}
+		if strings.TrimSpace(s[end:k]) == "" {
+			continue // "password: x" without words between is the key=value rule's
+		}
+		// The value is on the same line: "[sudo] password for deploy:" ends
+		// its line, and the next one is not its value (thread 0035).
 		v := k + 1
-		for v < len(s) && isSpace(s[v]) {
+		for v < len(s) && (s[v] == ' ' || s[v] == '\t') {
 			v++
 		}
 		if v == k+1 || v >= len(s) || isSpace(s[v]) {
