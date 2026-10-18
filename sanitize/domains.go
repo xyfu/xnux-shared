@@ -59,6 +59,9 @@ var fileExts = map[string]bool{
 	"pem": true, "key": true, "crt": true, "cert": true, "cer": true, "csr": true, "der": true, "p12": true, "pfx": true, "jks": true,
 	"log": true, "access": true, "error": true, "txt": true, "err": true, "out": true,
 	"bak": true, "old": true, "orig": true, "swp": true, "tmp": true, "lock": true, "pid": true, "sock": true,
+	// Backups and disabled copies (thread 0037): example.com.conf.dpkg-old,
+	// example.com.disabled, example.com.rpmsave.
+	"disabled": true, "save": true, "dpkg-old": true, "dpkg-dist": true, "dpkg-new": true, "rpmnew": true, "rpmsave": true,
 	"db": true, "sqlite": true, "gz": true, "zip": true, "tar": true, "d": true,
 }
 

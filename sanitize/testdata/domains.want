@@ -25,3 +25,11 @@ mail a***@[REDACTED:domain]
 /var/log/nginx/[REDACTED:domain].access.log
 ---
 https://[REDACTED:cred]@git.[REDACTED:domain]/repo.git
+---
+mv /etc/nginx/sites-enabled/[REDACTED:domain] /etc/nginx/sites-available/[REDACTED:domain].disabled
+---
+Configuration file '/etc/letsencrypt/renewal/shop.[REDACTED:domain].conf.dpkg-old' kept
+---
+warning: /etc/httpd/conf.d/www.[REDACTED:domain].conf saved as /etc/httpd/conf.d/www.[REDACTED:domain].conf.rpmsave and [REDACTED:domain].save
+---
+/etc/nginx/sites-available/[REDACTED:domain].dpkg-dist, not example.com.dpkg-other.net

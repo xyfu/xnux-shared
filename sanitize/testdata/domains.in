@@ -25,3 +25,11 @@ mail admin@example.com
 /var/log/nginx/example.com.access.log
 ---
 https://deploy:hunter2@git.example.com/repo.git
+---
+mv /etc/nginx/sites-enabled/example.com /etc/nginx/sites-available/example.com.disabled
+---
+Configuration file '/etc/letsencrypt/renewal/shop.example.com.conf.dpkg-old' kept
+---
+warning: /etc/httpd/conf.d/www.example.org.conf saved as /etc/httpd/conf.d/www.example.org.conf.rpmsave and example.com.save
+---
+/etc/nginx/sites-available/example.com.dpkg-dist, not example.com.dpkg-other.net
