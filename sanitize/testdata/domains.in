@@ -1,0 +1,27 @@
+Renewing an existing certificate for shop.example.com and www.example.com
+---
+Failed to renew certificate shop.example.com with error: Some challenges have failed.
+---
+Processing /etc/letsencrypt/renewal/shop.example.com.conf
+---
+  Domain: shop.example.com
+  Type:   unauthorized
+  Detail: 203.0.113.9: Invalid response from http://shop.example.com/.well-known/acme-challenge/abc: 404
+---
+nginx: [emerg] cannot load certificate "/etc/letsencrypt/live/shop.example.com/fullchain.pem"
+---
+php-fpm: pool shop.example.com
+---
+notexample.com, example.com.cn and example.community stay
+---
+EXAMPLE.COM and Www.Example.Com
+---
+Created an SSL vhost at /etc/apache2/sites-available/example.com-le-ssl.conf
+---
+Visit example.com. Or api.example.org, not example.org.uk
+---
+mail admin@example.com
+---
+/var/log/nginx/example.com.access.log
+---
+https://deploy:hunter2@git.example.com/repo.git

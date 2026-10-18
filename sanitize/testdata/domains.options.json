@@ -1,0 +1,6 @@
+{
+  "redact_domains": [
+    "Example.com",
+    "*.example.org"
+  ]
+}

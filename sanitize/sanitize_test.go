@@ -28,10 +28,42 @@ func newBarrier(t testing.TB) *Barrier {
 	return b
 }
 
+// corpusOptions are a corpus file's barrier options, from an optional
+// testdata/<name>.options.json beside it (thread 0037); without one the
+// default barrier (mask_email on) is used. Other implementations of the
+// rules read the same files.
+type corpusOptions struct {
+	MaskEmail      *bool    `json:"mask_email"`
+	RedactDomains  []string `json:"redact_domains"`
+	HideHostname   string   `json:"hide_hostname"`
+	HostnameMarker string   `json:"hostname_marker"`
+}
+
+func corpusBarrier(t *testing.T, in string) *Barrier {
+	t.Helper()
+	raw, err := os.ReadFile(strings.TrimSuffix(in, ".in") + ".options.json")
+	if os.IsNotExist(err) {
+		return newBarrier(t)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var o corpusOptions
+	if err := json.Unmarshal(raw, &o); err != nil {
+		t.Fatal(err)
+	}
+	opts := Options{MaskEmail: o.MaskEmail == nil || *o.MaskEmail, RedactDomains: o.RedactDomains,
+		HideHostname: o.HideHostname, HostnameMarker: o.HostnameMarker}
+	b, err := New(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
 // TestGoldenCorpus runs every testdata/*.in case through the barrier and
 // compares with the matching *.want. Cases are separated by "---" lines.
 func TestGoldenCorpus(t *testing.T) {
-	b := newBarrier(t)
 	ins, _ := filepath.Glob("testdata/*.in")
 	if len(ins) == 0 {
 		t.Fatal("no corpus")
@@ -39,6 +71,7 @@ func TestGoldenCorpus(t *testing.T) {
 	for _, in := range ins {
 		name := strings.TrimSuffix(filepath.Base(in), ".in")
 		t.Run(name, func(t *testing.T) {
+			b := corpusBarrier(t, in)
 			raw, err := os.ReadFile(in)
 			if err != nil {
 				t.Fatal(err)

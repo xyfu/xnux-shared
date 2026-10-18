@@ -27,15 +27,23 @@ type Options struct {
 	MaskEmail     bool
 	ExtraPatterns []string
 	// HideHostname, when set, replaces this hostname (and its first label)
-	// with "host" in every string.
+	// with "host" in every string, and hides its domain part like
+	// RedactDomains (thread 0037).
 	HideHostname string
+	// HostnameMarker replaces the hidden hostname instead of "host" (the
+	// server's AI context uses "[REDACTED:hostname]").
+	HostnameMarker string
+	// RedactDomains are hidden with their subdomains, the subdomain's own
+	// labels kept: shop.example.com → shop.[REDACTED:domain] (thread 0037).
+	RedactDomains []string
 }
 
 // Barrier applies the redaction rules. It is safe for concurrent use.
 type Barrier struct {
-	rules    []rule
-	hostRe   *regexp.Regexp
-	hostName string
+	rules      []rule
+	hostRe     *regexp.Regexp
+	hostName   string
+	hostMarker string
 }
 
 // New compiles the rule set.
@@ -44,7 +52,37 @@ func New(o Options) (*Barrier, error) {
 	if err != nil {
 		return nil, err
 	}
-	b := &Barrier{rules: append(builtinRules(o.MaskEmail), custom...)}
+	var domains []string
+	seen := map[string]bool{}
+	for _, raw := range o.RedactDomains {
+		d, err := NormalizeDomain(raw)
+		if err != nil {
+			return nil, err
+		}
+		if !seen[d] {
+			seen[d] = true
+			domains = append(domains, d)
+		}
+	}
+	if d := HostnameDomain(o.HideHostname); d != "" && !seen[d] {
+		domains = append(domains, d)
+	}
+	rules := builtinRules(o.MaskEmail)
+	if dr := domainRule(domains); dr != nil {
+		// After the email rule, before the IP rules (spec A6.3).
+		at := len(rules)
+		for i, r := range rules {
+			if r.network {
+				at = i
+				break
+			}
+		}
+		rules = append(rules[:at], append([]rule{*dr}, rules[at:]...)...)
+	}
+	b := &Barrier{rules: append(rules, custom...), hostMarker: "host"}
+	if o.HostnameMarker != "" {
+		b.hostMarker = o.HostnameMarker
+	}
 	if h := strings.TrimSpace(o.HideHostname); h != "" && !strings.EqualFold(h, "host") {
 		alts := []string{regexp.QuoteMeta(h)}
 		if short, _, ok := strings.Cut(h, "."); ok && len(short) >= 3 {
@@ -69,7 +107,7 @@ func (b *Barrier) apply(s string, kind fieldKind, st Stats) string {
 		s = truncateUTF8(s, maxString)
 	}
 	if b.hostRe != nil {
-		s = replace(s, b.hostRe.FindAllStringSubmatchIndex(s, -1), constant("host"), RuleHostname, st, 0)
+		s = replace(s, b.hostRe.FindAllStringSubmatchIndex(s, -1), constant(b.hostMarker), RuleHostname, st, 0)
 	}
 	lower, lowerOK := "", false
 	for i := range b.rules {
