@@ -135,7 +135,17 @@ type Host struct {
 	Uptime       int64    `json:"uptime,omitempty"`
 	Virt         string   `json:"virt,omitempty"`
 	Capabilities []string `json:"capabilities,omitempty"`
+	// RunAs: whether the agent runs as root (effective uid 0) or with
+	// least privilege; nothing else about the account (thread 0040,
+	// C-AG-HOST-RUN-AS). Older agents omit it.
+	RunAs string `json:"run_as,omitempty"`
 }
+
+// Host.RunAs values.
+const (
+	RunAsRoot           = "root"
+	RunAsLeastPrivilege = "least_privilege"
+)
 
 // Metric is one sampling tick; all fields share TS.
 type Metric struct {

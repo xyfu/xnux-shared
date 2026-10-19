@@ -64,7 +64,8 @@
             "type": "string",
             "enum": ["metrics", "systemd", "kmsg", "authlog", "procscan", "temps"]
           }
-        }
+        },
+        "run_as": { "type": "string", "enum": ["root", "least_privilege"] }
       }
     },
 

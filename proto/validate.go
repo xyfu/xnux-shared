@@ -161,6 +161,9 @@ func (p *Payload) ValidateHeader() error {
 		if h.Arch != "amd64" && h.Arch != "arm64" {
 			return invalid("host.arch", "must be amd64 or arm64")
 		}
+		if h.RunAs != "" && h.RunAs != RunAsRoot && h.RunAs != RunAsLeastPrivilege {
+			return invalid("host.run_as", "must be root or least_privilege")
+		}
 	}
 	if p.Metrics != nil && len(p.Metrics) == 0 {
 		return invalid("metrics", "must be omitted rather than empty")

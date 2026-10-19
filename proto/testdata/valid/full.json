@@ -3,7 +3,7 @@
   "agent_version": "1.0.0", "machine_fp": "9c1e4b7a0d2f6e38",
   "host": { "hostname": "web-01", "os": "Ubuntu 24.04 LTS", "kernel": "6.8.0-45-generic", "arch": "amd64",
             "cores": 4, "uptime": 864000, "virt": "kvm",
-            "capabilities": ["metrics", "systemd", "kmsg", "authlog", "procscan", "temps"] },
+            "capabilities": ["metrics", "systemd", "kmsg", "authlog", "procscan", "temps"], "run_as": "least_privilege" },
   "metrics": [{
     "ts": 1789999985,
     "cpu": { "total_pct": 12.4, "iowait_pct": 0.8, "steal_pct": 0 },

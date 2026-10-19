@@ -1,0 +1,2 @@
+{ "v": 1, "seq": 1, "sent_at": 1790000000, "agent_version": "1.0.0", "machine_fp": "9c1e4b7a0d2f6e38", "redactions": {},
+  "host": { "hostname": "web-01", "os": "Ubuntu 24.04", "kernel": "6.8.0", "arch": "amd64", "run_as": "xnux" } }
